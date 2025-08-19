@@ -1,6 +1,58 @@
+# ==========================
+# Node / npm / Yarn / pnpm
+# ==========================
 node_modules/
 npm-debug.log*
-.DS_Store
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==========================
+# Environment / Secrets
+# ==========================
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ==========================
+# Build & Output
+# ==========================
 dist/
+build/
+.next/
+out/
+.cache/
 coverage/
+tmp/
+temp/
+
+# ==========================
+# Logs
+# ==========================
+logs
+*.log
+*.log.*
+*.out
+*.pid
+*.gz
+
+# ==========================
+# System files
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# Vercel / Deployment
+# ==========================
+.vercel
+
+# ==========================
+# IDE / Editor
+# ==========================
+.vscode/
+.idea/
+*.swp
+*.swo
