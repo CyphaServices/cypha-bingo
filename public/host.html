@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Host Control</title>
+  <link rel="stylesheet" href="css/bingo.css">
+</head>
+<body>
+  <h1 class="page-title">🎤 Cypha Bingo – Host Panel</h1>
+
+  <!-- ======================
+       MAIN LAYOUT - 3 COLUMNS
+       ====================== -->
+  <div id="main-columns">
+    
+    <!-- LEFT COLUMN: Active Players -->
+    <div class="column">
+      <h3>👥 Active Players</h3>
+      <ul id="lobby-list"></ul>
+    </div>
+
+    <!-- MIDDLE COLUMN: Game Controls -->
+    <div class="column center-column">
+      <!-- THEME SELECTION + START BUTTON -->
+      <select id="theme-select" class="theme-btn"></select>
+      <button class="theme-btn" onclick="startGame()">Start Game</button>
+
+      <!-- DISPLAY PLAYER COUNT -->
+      <div id="player-count">👥 Players Connected: 0</div>
+
+      <!-- BINGO ALERTS -->
+      <div id="bingo-alerts" class="bingo-alert-box"></div>
+
+      <!-- NEXT SONG PREVIEW BOX -->
+      <div id="preview-wrapper">
+        <h3>🎧 Next Song Preview</h3>
+        <div id="preview-song">None</div>
+      </div>
+
+      <!-- MAIN CONTROL BUTTONS -->
+      <button class="host-btn" id="random-btn">🎲 Random Call</button>
+      <button class="host-btn" id="broadcast-btn" disabled>📢 Confirm Call</button>
+
+      <!-- BINGO PATTERN DROPDOWN -->
+      <div class="pattern-select-wrapper">
+        <label for="pattern-select">Bingo Pattern:</label>
+        <select id="pattern-select" class="host-btn">
+          <option value="line">Line</option>
+          <option value="four-corners">Four Corners</option>
+          <option value="full-card">Full Card</option>
+        </select>
+      </div>
+
+      <!-- CLEAR PREVIOUS SONGS BUTTON -->
+      <button id="clear-btn" class="host-btn">❌ Clear Previous Songs</button>
+
+      <!-- SONG QUEUE DROPDOWN -->
+      <div id="song-queue-wrapper">
+        <h3>🎼 Select a Song from Theme</h3>
+        <select id="song-queue"></select>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Song Call Log -->
+    <div class="column">
+      <h3>📜 Song Call Log</h3>
+      <ul id="call-log"></ul>
+    </div>
+  </div>
+
+  <!-- =====================
+       SOCKET.IO + GAME LOGIC
+       ===================== -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    /* -------------------------
+       SONG THEMES & TRACK LISTS
+       ------------------------- */
+const themes = {
+
+  "80s R&B": [
+    "Billie Jean - Michael Jackson",
+    "Super Freak - Rick James",
+    "Kiss - Prince",
+    "I Wanna Dance with Somebody - Whitney Houston",
+    "Let's Groove - Earth, Wind & Fire",
+    "Rock with You - Michael Jackson",
+    "Get Down On It - Kool & The Gang",
+    "Celebration - Kool & The Gang",
+    "Never Too Much - Luther Vandross",
+    "Ain't Nobody - Chaka Khan",
+    "Sweet Love - Anita Baker",
+    "Outstanding - Gap Band",
+    "Candy - Cameo",
+    "Word Up! - Cameo",
+    "Funky Sensation - Gwen McCrae"
+  ]
+  ,
+  "90s R&B": [
+  "No Scrubs - TLC",
+  "Creep - TLC",
+  "Waterfalls - TLC",
+  "Poison - Bell Biv DeVoe",
+  "My Lovin’ (You’re Never Gonna Get It) - En Vogue",
+  "Hold On - En Vogue",
+  "Don’t Let Go (Love) - En Vogue",
+  "Weak - SWV",
+  "Right Here (Human Nature Mix) - SWV",
+  "I’m So Into You - SWV",
+  "Can We Talk - Tevin Campbell",
+  "Tell Me - Groove Theory",
+  "They Don’t Know - Jon B.",
+  "Every Little Thing I Do - Soul For Real",
+  "Candy Rain - Soul For Real",
+  "Knockin’ Da Boots - H-Town",
+  "Freek’n You - Jodeci",
+  "Come & Talk to Me - Jodeci",
+  "My Boo - Ghost Town DJs",
+  "I Like the Way (The Kissing Game) - Hi-Five",
+  "She’s Playing Hard to Get - Hi-Five",
+  "I Wanna Sex You Up - Color Me Badd",
+  "Rub You the Right Way - Johnny Gill",
+  "Let’s Chill - Guy",
+  "Piece of My Love - Guy",
+  "Groove Me - Guy",
+  "Just Got Paid - Johnny Kemp",
+  "I Wanna Be Down - Brandy",
+  "Baby - Brandy",
+  "Sittin’ Up in My Room - Brandy",
+  "You Make Me Wanna… - Usher",
+  "Nice & Slow - Usher",
+  "My Way - Usher",
+  "The First Night - Monica",
+  "Don’t Take It Personal - Monica",
+  "Twisted - Keith Sweat",
+  "Nobody - Keith Sweat",
+  "So Into You - Tamia",
+  "Whip Appeal - Babyface",
+  "Every Little Step - Bobby Brown",
+  "Roni - Bobby Brown",
+  "Motownphilly - Boyz II Men",
+  "Water Runs Dry (Remix) - Boyz II Men",
+  "U Send Me Swingin’ - Mint Condition",
+  "Breakin’ My Heart (Pretty Brown Eyes) - Mint Condition",
+  "Feels Good - Tony! Toni! Toné!",
+  "Anniversary (Remix) - Tony! Toni! Toné!",
+  "(Lay Your Head on My) Pillow - Tony! Toni! Toné!",
+  "Spread My Wings - Troop",
+  "All I Do Is Think of You - Troop",
+  "Freak Me - Silk",
+  "Meeting in My Bedroom - Silk",
+  "I Like - Kut Klose",
+  "Get It On Tonite - Montell Jordan",
+  "This Is How We Do It - Montell Jordan",
+  "Let’s Ride - Montell Jordan",
+  "Do Me! - Bell Biv DeVoe",
+  "She’s Got That Vibe - R. Kelly & Public Announcement",
+  "Honey Love - R. Kelly & Public Announcement",
+  "You Remind Me of Something - R. Kelly",
+  "Stroke You Up - Changing Faces",
+  "G.H.E.T.T.O.U.T. - Changing Faces",
+  "Love Like This - Faith Evans",
+  "Soon As I Get Home - Faith Evans",
+  "Come Over - Faith Evans",
+  "Back & Forth - Aaliyah",
+  "At Your Best (You Are Love) - Aaliyah",
+  "Are You That Somebody? - Aaliyah",
+  "One in a Million - Aaliyah",
+  "4 Page Letter - Aaliyah",
+  "I Love Your Smile - Shanice",
+  "Baby-Baby-Baby - TLC",
+  "If Your Girl Only Knew - Aaliyah",
+  "Who Can I Run To - Xscape",
+  "Just Kickin’ It - Xscape"
+]
+  ,
+  "00s R&B": [
+    "Rock Your Body - Justin Timberlake",
+    "Señorita - Justin Timberlake",
+    "Like I Love You - Justin Timberlake",
+    "Cry Me a River - Justin Timberlake",
+    "You Got It Bad (RMX) - Usher",
+    "U Got It Bad (Fast) - Usher",
+    "U Don’t Have to Call - Usher",
+    "Yeah! - Usher ft. Lil Jon, Ludacris",
+    "Caught Up - Usher",
+    "Burn (RMX) - Usher",
+    "My Boo - Usher & Alicia Keys",
+    "Love in This Club - Usher ft. Young Jeezy",
+    "Dip It Low - Christina Milian",
+    "AM to PM - Christina Milian",
+    "1, 2 Step - Ciara ft. Missy Elliott",
+    "Goodies - Ciara ft. Petey Pablo",
+    "Oh - Ciara ft. Ludacris",
+    "Promise (RMX) - Ciara",
+    "Body Party - Ciara",
+    "Be Without You - Mary J. Blige",
+    "Family Affair - Mary J. Blige",
+    "Just Fine - Mary J. Blige",
+    "No More Drama (RMX) - Mary J. Blige",
+    "Hollaback Girl (RMX) - Gwen Stefani",
+    "Let Me Blow Ya Mind - Eve ft. Gwen Stefani",
+    "Love @ 1st Sight - Mary J. ft. Method Man",
+    "So Sick - Ne-Yo",
+    "Sexy Love - Ne-Yo",
+    "Because of You - Ne-Yo",
+    "Miss Independent - Ne-Yo",
+    "Mad - Ne-Yo",
+    "Irreplaceable - Beyoncé",
+    "Crazy in Love - Beyoncé ft. Jay-Z",
+    "Naughty Girl - Beyoncé",
+    "Baby Boy - Beyoncé ft. Sean Paul",
+    "Check On It - Beyoncé ft. Slim Thug",
+    "Me, Myself & I (RMX) - Beyoncé",
+    "Upgrade U - Beyoncé ft. Jay-Z",
+    "Déjà Vu - Beyoncé ft. Jay-Z",
+    "Say My Name (2000 RMX) - Destiny’s Child",
+    "Survivor - Destiny’s Child",
+    "Bootylicious - Destiny’s Child",
+    "Lose My Breath - Destiny’s Child",
+    "Cater 2 U (RMX) - Destiny’s Child",
+    "Peaches & Cream - 112",
+    "Dance with Me - 112",
+    "Cupid (RMX) - 112",
+    "Anywhere - 112",
+    "I Wanna Know - Joe",
+    "Stutter (RMX) - Joe ft. Mystikal",
+    "Don’t Wanna Be a Player - Joe",
+    "All the Things - Joe",
+    "Rock the Boat - Aaliyah",
+    "More Than a Woman - Aaliyah",
+    "Try Again - Aaliyah",
+    "We Need a Resolution - Aaliyah",
+    "Come Over - Aaliyah",
+    "Foolish - Ashanti",
+    "Rock wit U (Awww Baby) - Ashanti",
+    "Baby - Ashanti",
+    "Only U - Ashanti",
+    "What’s Luv? - Fat Joe ft. Ashanti",
+    "Always on Time - Ja Rule ft. Ashanti",
+    "Mesmerize - Ja Rule ft. Ashanti",
+    "Rain on Me (RMX) - Ashanti",
+    "Don’t Mess with My Man - Nivea ft. Jagged Edge",
+    "Where the Party At - Jagged Edge ft. Nelly",
+    "Let’s Get Married (RMX) - Jagged Edge",
+    "Walked Outta Heaven - Jagged Edge",
+    "Promise - Jagged Edge",
+    "He Can’t Love U - Jagged Edge",
+    "Put You On Game - Jagged Edge",
+    "Can’t Let You Go - Fabolous ft. Lil’ Mo",
+    "Into You - Fabolous ft. Tamia",
+    "Trade It All Pt. 2 - Fabolous ft. Jagged Edge"
+  ]
+,
+  "10s-Current R&B": [
+    "Fine China - Chris Brown",
+    "Loyal - Chris Brown ft. Lil Wayne, Tyga",
+    "Back to Sleep (RMX) - Chris Brown",
+    "Privacy - Chris Brown",
+    "Heat - Chris Brown ft. Gunna",
+    "No Guidance - Chris Brown ft. Drake",
+    "Go Crazy - Chris Brown & Young Thug",
+    "New Flame - Chris Brown ft. Usher, Rick Ross",
+    "Drunk Texting - Chris Brown ft. Jhené Aiko",
+    "Strip - Chris Brown ft. Kevin McCall",
+    "Party - Chris Brown ft. Usher, Gucci Mane",
+    "Don’t Judge Me - Chris Brown",
+    "B.E.D. - Jacquees",
+    "At the Club - Jacquees & Dej Loaf",
+    "Come Thru - Jacquees & Chris Brown",
+    "You - Jacquees",
+    "Fact or Fiction - Jacquees",
+    "The Light - Jeremih & Ty Dolla $ign",
+    "Oui - Jeremih",
+    "Planez - Jeremih ft. J. Cole",
+    "All the Time - Jeremih",
+    "Don’t Tell ‘Em - Jeremih ft. YG",
+    "Exchange - Bryson Tiller",
+    "Don’t - Bryson Tiller",
+    "Run Me Dry - Bryson Tiller",
+    "Sorry Not Sorry - Bryson Tiller",
+    "Could’ve Been - H.E.R. ft. Bryson Tiller",
+    "Best Part - H.E.R. & Daniel Caesar",
+    "Focus - H.E.R.",
+    "Slide - H.E.R. ft. YG",
+    "Damage - H.E.R.",
+    "Location - Khalid",
+    "Talk - Khalid",
+    "Better - Khalid",
+    "OTW - Khalid, 6LACK & Ty Dolla $ign",
+    "Love Lies - Khalid & Normani",
+    "Wild Thoughts - DJ Khaled ft. Rihanna, Bryson Tiller",
+    "Work - Rihanna ft. Drake",
+    "Needed Me - Rihanna",
+    "Sex with Me - Rihanna",
+    "Kiss It Better - Rihanna",
+    "Stay - Rihanna ft. Mikky Ekko",
+    "Come Thru - Summer Walker & Usher",
+    "Girls Need Love (RMX) - Summer Walker ft. Drake",
+    "Playing Games - Summer Walker",
+    "Body - Summer Walker",
+    "Stretch You Out - Summer Walker ft. A Boogie",
+    "Tonight - Summer Walker",
+    "Boo’d Up - Ella Mai",
+    "Trip - Ella Mai",
+    "Shot Clock - Ella Mai",
+    "Not Another Love Song - Ella Mai",
+    "Leave You Alone - Ella Mai",
+    "Lights On - Ella Mai",
+    "Heartbreak Anniversary - Giveon",
+    "Like I Want You - Giveon",
+    "For Tonight - Giveon",
+    "Lie Again - Giveon",
+    "Lost Me - Giveon",
+    "On the Way - Tone Stith",
+    "FWM - Tone Stith",
+    "Do I Ever - Tone Stith",
+    "Good Company - Tone Stith ft. Swae Lee, Quavo",
+    "Mine - Bazzi ft. Camila Cabello",
+    "I.F.L.Y. - Bazzi",
+    "Paradise - Bazzi",
+    "Beautiful - Bazzi ft. Camila Cabello",
+    "Honest - Bazzi",
+    "OTR - Bazzi",
+    "Can’t Let Go - Anthony Lewis",
+    "It’s Yours - Anthony Lewis",
+    "Talk 2 U - Anthony Lewis",
+    "Candy Rain 2020 - Anthony Lewis",
+    "Touch You - Anthony Lewis"
+  ]
+,
+  "90s Hip-Hop": [
+    "Juicy - The Notorious B.I.G.",
+    "Hypnotize - The Notorious B.I.G.",
+    "Mo Money Mo Problems - The Notorious B.I.G.",
+    "Big Poppa - The Notorious B.I.G.",
+    "California Love - 2Pac ft. Dr. Dre",
+    "How Do U Want It - 2Pac",
+    "I Get Around - 2Pac",
+    "Dear Mama - 2Pac",
+    "It Was a Good Day - Ice Cube",
+    "Check Yo Self - Ice Cube",
+    "You Know How We Do It - Ice Cube",
+    "Nuthin' but a 'G' Thang - Dr. Dre ft. Snoop Dogg",
+    "Let Me Ride - Dr. Dre",
+    "Gin and Juice - Snoop Dogg",
+    "Who Am I? (What's My Name) - Snoop Dogg",
+    "Beautiful - Snoop Dogg ft. Pharrell",
+    "Regulate - Warren G ft. Nate Dogg",
+    "This DJ - Warren G",
+    "Next Episode - Dr. Dre ft. Snoop Dogg",
+    "Ain't No Fun - Snoop Dogg, Nate Dogg, Warren G, Kurupt",
+    "Scenario - A Tribe Called Quest",
+    "Can I Kick It? - A Tribe Called Quest",
+    "Award Tour - A Tribe Called Quest",
+    "Electric Relaxation - A Tribe Called Quest",
+    "Runnin' - The Pharcyde",
+    "Passin’ Me By - The Pharcyde",
+    "Players Ball - OutKast",
+    "Elevators (Me & You) - OutKast",
+    "ATLiens - OutKast",
+    "Rosa Parks - OutKast",
+    "Southernplayalistic - OutKast",
+    "Flava in Ya Ear (RMX) - Craig Mack ft. B.I.G., LL Cool J, Busta, Rampage",
+    "Loungin' - LL Cool J",
+    "Doin’ It - LL Cool J",
+    "Hey Lover - LL Cool J",
+    "Back Seat (RMX) - LL Cool J",
+    "U Can't Touch This - MC Hammer",
+    "2 Legit 2 Quit - MC Hammer",
+    "O.P.P. - Naughty by Nature",
+    "Hip Hop Hooray - Naughty by Nature",
+    "Feel Me Flow - Naughty by Nature",
+    "Jump - Kris Kross",
+    "Warm It Up - Kris Kross",
+    "Freaks Come Out at Night - Whodini",
+    "Friends - Whodini",
+    "Money, Power & Respect - The LOX ft. DMX, Lil' Kim",
+    "Get at Me Dog - DMX",
+    "Ruff Ryders' Anthem - DMX",
+    "Party Up - DMX",
+    "What's My Name - DMX",
+    "Make 'Em Say Uhh! - Master P",
+    "Bout It Bout It - Master P",
+    "Back That Thang Up - Juvenile ft. Lil Wayne, Mannie Fresh",
+    "Ha - Juvenile",
+    "Bling Bling - B.G. ft. Big Tymers, Lil Wayne",
+    "Still Not a Player - Big Pun",
+    "I'm Not a Player - Big Pun",
+    "Can't C Me - 2Pac",
+    "Keep Ya Head Up - 2Pac",
+    "If I Ruled the World - Nas ft. Lauryn Hill",
+    "Street Dreams - Nas",
+    "One Mic - Nas",
+    "Made You Look - Nas",
+    "C.R.E.A.M. - Wu-Tang Clan",
+    "Protect Ya Neck - Wu-Tang Clan",
+    "Method Man - Wu-Tang Clan",
+    "Da Rockwilder - Method Man & Redman",
+    "How High - Method Man & Redman",
+    "I'll Be - Foxy Brown ft. Jay-Z",
+    "Ain't No N**** - Jay-Z ft. Foxy Brown",
+    "Can I Get A... - Jay-Z ft. Amil, Ja Rule",
+    "Hard Knock Life - Jay-Z",
+    "Money Ain't a Thang - Jermaine Dupri ft. Jay-Z",
+    "Doo Wop (That Thing) - Lauryn Hill",
+    "Everything Is Everything - Lauryn Hill",
+    "Lost Ones - Lauryn Hill"
+  ]
+  ,
+  "00s Hip-Hop": [
+  "In Da Club - 50 Cent",
+  "P.I.M.P. - 50 Cent",
+  "21 Questions - 50 Cent ft. Nate Dogg",
+  "Candy Shop - 50 Cent ft. Olivia",
+  "Just a Lil Bit - 50 Cent",
+  "Disco Inferno - 50 Cent",
+  "Shake Ya Tailfeather - Nelly, P. Diddy, Murphy Lee",
+  "Hot in Herre - Nelly",
+  "Ride wit Me - Nelly ft. City Spud",
+  "Air Force Ones - Nelly ft. St. Lunatics",
+  "E.I. (RMX) - Nelly",
+  "Country Grammar - Nelly",
+  "Grillz - Nelly ft. Paul Wall, Ali, Gipp",
+  "Dilemma - Nelly ft. Kelly Rowland",
+  "Work It - Missy Elliott",
+  "Get Ur Freak On - Missy Elliott",
+  "Lose Control - Missy Elliott ft. Ciara, Fatman Scoop",
+  "One Minute Man - Missy Elliott ft. Ludacris",
+  "Pass That Dutch - Missy Elliott",
+  "Drop It Like It's Hot - Snoop Dogg ft. Pharrell",
+  "Beautiful - Snoop Dogg ft. Pharrell",
+  "Signs - Snoop Dogg ft. JT, Charlie Wilson",
+  "Let's Get Blown - Snoop Dogg ft. Pharrell",
+  "The Next Episode - Dr. Dre ft. Snoop Dogg",
+  "Still D.R.E. - Dr. Dre ft. Snoop Dogg",
+  "Family Affair - Jay-Z",
+  "99 Problems - Jay-Z",
+  "Dirt Off Your Shoulder - Jay-Z",
+  "Big Pimpin' - Jay-Z ft. UGK",
+  "I Just Wanna Love U - Jay-Z",
+  "Excuse Me Miss - Jay-Z",
+  "Izzo (H.O.V.A.) - Jay-Z",
+  "Change Clothes - Jay-Z ft. Pharrell",
+  "Gold Digger - Kanye West ft. Jamie Foxx",
+  "Slow Jamz - Kanye West, Twista, Jamie Foxx",
+  "Through the Wire - Kanye West",
+  "All Falls Down - Kanye West ft. Syleena Johnson",
+  "Touch the Sky - Kanye West ft. Lupe Fiasco",
+  "Jesus Walks - Kanye West",
+  "Stronger - Kanye West",
+  "The Good Life - Kanye West ft. T-Pain",
+  "Tipsy - J-Kwon",
+  "Hood Hop - J-Kwon",
+  "Right Thurr - Chingy",
+  "Holidae In - Chingy ft. Snoop Dogg, Ludacris",
+  "Pullin’ Me Back - Chingy ft. Tyrese",
+  "Holiday - Chingy",
+  "Southern Hospitality - Ludacris",
+  "Move B***h - Ludacris ft. Mystikal, I-20",
+  "Stand Up - Ludacris ft. Shawnna",
+  "What's Your Fantasy - Ludacris",
+  "Money Maker - Ludacris ft. Pharrell",
+  "Area Codes - Ludacris",
+  "Get Low - Lil Jon & The East Side Boyz ft. Ying Yang Twins",
+  "Snap Yo Fingers - Lil Jon ft. E-40, Sean Paul",
+  "Bia' Bia' - Lil Jon ft. Ludacris, Chyna White",
+  "Salt Shaker - Ying Yang Twins ft. Lil Jon",
+  "Wait (The Whisper Song) - Ying Yang Twins",
+  "Shake - Ying Yang Twins ft. Pitbull",
+  "Ms. New Booty - Bubba Sparxxx ft. Ying Yang Twins",
+  "Still Fly - Big Tymers",
+  "Oh Boy - Cam’ron ft. Juelz Santana",
+  "Hey Ma - Cam’ron ft. Juelz Santana",
+  "Lean Back - Terror Squad ft. Fat Joe, Remy Ma",
+  "What's Luv? - Fat Joe ft. Ashanti, Ja Rule",
+  "Make It Rain - Fat Joe ft. Lil Wayne",
+  "All the Way Up - Fat Joe, Remy Ma, French Montana",
+  "Always on Time - Ja Rule ft. Ashanti",
+  "Livin’ It Up - Ja Rule ft. Case",
+  "Mesmerize - Ja Rule ft. Ashanti",
+  "Put It on Me - Ja Rule ft. Lil’ Mo, Vita",
+  "Down 4 U - Irv Gotti, Ja Rule, Ashanti, Vita, Charli Baltimore",
+  "Where the Party At - Jagged Edge ft. Nelly",
+  "Wobble Wobble - 504 Boyz",
+  "Right Above It - Lil Wayne ft. Drake"
+]
+  ,
+  "10s-Current Hip-Hop": [
+  "Sicko Mode - Travis Scott ft. Drake",
+  "Goosebumps - Travis Scott ft. Kendrick Lamar",
+  "Highest in the Room - Travis Scott",
+  "Antidote - Travis Scott",
+  "Drank in My Cup - Kirko Bangz",
+  "Started from the Bottom - Drake",
+  "Nonstop - Drake",
+  "God's Plan - Drake",
+  "In My Feelings - Drake",
+  "Nice for What - Drake",
+  "One Dance - Drake ft. Wizkid, Kyla",
+  "Passionfruit - Drake",
+  "Hotline Bling - Drake",
+  "Laugh Now Cry Later - Drake ft. Lil Durk",
+  "Life Is Good - Future ft. Drake",
+  "Mask Off - Future",
+  "Low Life - Future ft. The Weeknd",
+  "March Madness - Future",
+  "F*** Up Some Commas - Future",
+  "Jumpman - Drake & Future",
+  "Big Rings - Drake & Future",
+  "Look Alive - BlocBoy JB ft. Drake",
+  "Yes Indeed - Lil Baby & Drake",
+  "Freestyle - Lil Baby",
+  "On Me - Lil Baby",
+  "We Paid - Lil Baby & 42 Dugg",
+  "My Dawg - Lil Baby",
+  "Drip Too Hard - Lil Baby & Gunna",
+  "Lemonade - Internet Money, Gunna, Don Toliver, NAV",
+  "Pushin P - Gunna & Future ft. Young Thug",
+  "Hot - Young Thug ft. Gunna",
+  "Lifestyle - Rich Gang ft. Young Thug, Rich Homie Quan",
+  "About the Money - T.I. ft. Young Thug",
+  "Ball - T.I. ft. Lil Wayne",
+  "No Mediocre - T.I. ft. Iggy Azalea",
+  "Live Your Life - T.I. ft. Rihanna",
+  "Rack City - Tyga",
+  "Taste - Tyga ft. Offset",
+  "Ayo - Tyga & Chris Brown",
+  "Faded - Tyga ft. Lil Wayne",
+  "Molly - Tyga ft. Wiz Khalifa, Mally Mall, Cedric Gervais",
+  "BedRock - Young Money",
+  "Every Girl - Young Money",
+  "Tapout - Rich Gang",
+  "Pop That - French Montana ft. Rick Ross, Drake, Lil Wayne",
+  "Unforgettable - French Montana ft. Swae Lee",
+  "No Stylist - French Montana ft. Drake",
+  "All the Way Up - Fat Joe, Remy Ma, French Montana",
+  "Wild Thoughts - DJ Khaled ft. Rihanna, Bryson Tiller",
+  "I'm the One - DJ Khaled ft. Justin Bieber, Quavo, Chance, Wayne",
+  "No Brainer - DJ Khaled ft. Bieber, Chance, Quavo",
+  "For Free - DJ Khaled ft. Drake",
+  "Workin Me - Quavo",
+  "Hotel Lobby - Quavo & Takeoff",
+  "Versace - Migos",
+  "Fight Night - Migos",
+  "Walk It Talk It - Migos ft. Drake",
+  "Bad and Boujee - Migos ft. Lil Uzi Vert",
+  "Stir Fry - Migos",
+  "Motorsport - Migos ft. Nicki Minaj, Cardi B",
+  "Bodak Yellow - Cardi B",
+  "Money - Cardi B",
+  "I Like It - Cardi B, Bad Bunny, J Balvin",
+  "WAP - Cardi B ft. Megan Thee Stallion",
+  "Savage RMX - Megan Thee Stallion ft. Beyoncé",
+  "Body - Megan Thee Stallion",
+  "Thot Sh*t - Megan Thee Stallion",
+  "Hot Girl Summer - Megan, Nicki Minaj, Ty Dolla $ign",
+  "Anaconda - Nicki Minaj",
+  "Truffle Butter - Nicki Minaj ft. Drake, Lil Wayne",
+  "Super Bass - Nicki Minaj",
+  "Chun-Li - Nicki Minaj",
+  "Moment 4 Life - Nicki Minaj ft. Drake",
+  "The London - Young Thug, J. Cole, Travis Scott"
+]
+  ,
+  "Southern Soul / Line Dance": [
+  "Boots on the Ground - Omar Cunningham",
+  "Side Piece - Pokey Bear",
+  "My Sidepiece Reply - Coldrank",
+  "Sweet Shop - Jeter Jones",
+  "Zydeco Love - Jeter Jones",
+  "Trailride Certified - Jeter Jones",
+  "It’s Friday - Sir Charles Jones",
+  "Friday Night - Wendell B",
+  "Mississippi Boy - Will T.",
+  "Hole in the Wall - Mel Waiters",
+  "Swing Out - Bigg Robb",
+  "Good Lovin’ Will Make You Cry - Carl Sims",
+  "Clean Up Woman - Betty Wright",
+  "We’re Steppin’ Out Tonight - Vick Allen",
+  "Get It Girl - Ms. Jody",
+  "Shake Your Booty - Ms. Jody",
+  "The Bop - Fast Eddie",
+  "The Shuffle - Cupid",
+  "Cupid Shuffle - Cupid",
+  "Wobble - V.I.C.",
+  "Cha Cha Slide - DJ Casper",
+  "Electric Slide - Marcia Griffiths",
+  "Keep Rollin’ - Lil’ Nate & The Zydeco Big Timers",
+  "Step in the Name of Love - R. Kelly",
+  "Happy Feelings - Maze ft. Frankie Beverly",
+  "Before I Let Go - Maze ft. Frankie Beverly",
+  "Before I Let Go (RMX) - Beyoncé",
+  "Candy - Cameo",
+  "Outstanding - The Gap Band",
+  "Let’s Groove - Earth, Wind & Fire",
+  "Back That Thang Up - Juvenile ft. Lil Wayne, Mannie Fresh",
+  "Teach Me How to Dougie - Cali Swag District",
+  "Big Girl - Cupid",
+  "Do It with Your Boots On - Big Mucci",
+  "Bikers Shuffle - Big Mucci",
+  "Cleveland Shuffle - Big Mucci",
+  "Mississippi Cha Cha Slide - DJ Bigg Smoove",
+  "Roll It Roll It - DJ Bigg Smoove",
+  "Step On Over - Vick Allen",
+  "Mr. Sexy Man - Nellie Tiger Travis",
+  "The Right Kind of Wrong - Nellie Tiger Travis",
+  "Pour Me Up - Tucka",
+  "So Fine - Tucka",
+  "Sweet Shop (RMX) - Tucka",
+  "Work It Out - Tucka",
+  "Love Rehab - Denise LaSalle",
+  "Drop That Thang - J-Wonn",
+  "I Got This Record - J-Wonn",
+  "Night Time - J-Wonn",
+  "Get It Poppin’ - Stan Butler",
+  "I Let a Woman Take My Woman - Stan Butler",
+  "Two Step - Unk",
+  "Walk It Out - Unk",
+  "Booty Call - Blackstreet",
+  "She’s a Bad Mama Jama - Carl Carlton",
+  "Shout - The Isley Brothers",
+  "Da’ Butt - E.U.",
+  "Bustin’ Loose - Chuck Brown",
+  "Party Train - The Gap Band",
+  "Slide - Slave",
+  "Square Biz - Teena Marie",
+  "Never Too Much - Luther Vandross",
+  "She’s Fresh - Kool & The Gang",
+  "Celebration - Kool & The Gang",
+  "Hollywood Swinging - Kool & The Gang",
+  "Play That Funky Music - Wild Cherry",
+  "September - Earth, Wind & Fire",
+  "Boogie Shoes - KC and the Sunshine Band",
+  "Get Down on It - Kool & The Gang",
+  "I Got the Feeling - James Brown",
+  "Sex Machine - James Brown",
+  "Do I Do - Stevie Wonder",
+  "All Night Long - Lionel Richie",
+  "Dancing in the Moonlight - King Harvest"
+]
+  ,
+  "Reggae / Dancehall": [
+  "Murder She Wrote - Chaka Demus & Pliers",
+  "Bam Bam - Sister Nancy",
+  "Sweat (A La La La La Long) - Inner Circle",
+  "Bad Boys - Inner Circle",
+  "Here Comes the Hotstepper - Ini Kamoze",
+  "Hot Gal Today - Mr. Vegas",
+  "Heads High - Mr. Vegas",
+  "Pull Up - Mr. Vegas",
+  "Gallis - Mr. Vegas",
+  "Bruk It Down - Mr. Vegas",
+  "Pon De River Pon De Bank - Elephant Man",
+  "Signal the Plane - Elephant Man",
+  "Nuh Linga - Elephant Man",
+  "Log On - Elephant Man",
+  "Wine Up - Kat DeLuna ft. Elephant Man",
+  "Dutty Wine - Tony Matterhorn",
+  "I’m Still in Love with You - Sean Paul & Sasha",
+  "Get Busy - Sean Paul",
+  "Like Glue - Sean Paul",
+  "Gimme the Light - Sean Paul",
+  "Temperature - Sean Paul",
+  "We Be Burnin’ - Sean Paul",
+  "She Doesn’t Mind - Sean Paul",
+  "Watch Out for This (Bumaye) - Major Lazer",
+  "Pon de Floor - Major Lazer",
+  "Light It Up (RMX) - Major Lazer ft. Nyla, Fuse ODG",
+  "Boom - Major Lazer & MOTi",
+  "Con Calma - Daddy Yankee ft. Snow",
+  "Gasolina - Daddy Yankee",
+  "Rompe - Daddy Yankee",
+  "Limbo - Daddy Yankee",
+  "Go Dung - Major Lazer, Kes",
+  "Turn Me On - Kevin Lyttle",
+  "Tempted to Touch - Rupee",
+  "Push It Up - Rupee",
+  "Wifey - Next & Wayne Wonder",
+  "No Letting Go - Wayne Wonder",
+  "Saddest Day - Wayne Wonder",
+  "Holding Firm - Wayne Wonder",
+  "Sweat It Out - Beenie Man",
+  "Who Am I (Sim Simma) - Beenie Man",
+  "King of the Dancehall - Beenie Man",
+  "Dude - Beenie Man ft. Ms. Thing",
+  "Hmm Hmm - Beenie Man",
+  "Girls Dem Sugar - Beenie Man ft. Mya",
+  "Tight Up Skirt - Red Rat",
+  "Shelly Ann - Red Rat",
+  "Big Man Little Yute - Red Rat",
+  "Vitamin S - Baby Cham",
+  "Ghetto Story - Baby Cham",
+  "Informer - Snow",
+  "Loodi - Vybz Kartel ft. Shenseea",
+  "Fever - Vybz Kartel",
+  "Clarks - Vybz Kartel ft. Popcaan, Gaza Slim",
+  "Ramping Shop - Vybz Kartel ft. Spice",
+  "So Mi Like It - Spice",
+  "Indicator - Spice",
+  "Go Down Deh - Spice, Sean Paul, Shaggy",
+  "Boombastic - Shaggy",
+  "It Wasn’t Me - Shaggy",
+  "Angel - Shaggy ft. Rayvon",
+  "Oh Carolina - Shaggy",
+  "Tuk In Ya Waist - Alison Hinds",
+  "Roll It Gal - Alison Hinds",
+  "Work - Rihanna ft. Drake",
+  "Pon de Replay - Rihanna",
+  "Rude Boy - Rihanna",
+  "Man Down - Rihanna",
+  "Bend Down Pause - RDX",
+  "Jump - RDX",
+  "Shake Your Bam Bam - RDX",
+  "Broad Out - RDX",
+  "Hot Like Fire - RDX"
+]
+
+  ,
+  "Latin Dance / Reggaeton": [
+  "Despacito - Luis Fonsi ft. Daddy Yankee",
+  "Bailando - Enrique Iglesias ft. Gente de Zona, Descemer Bueno",
+  "Danza Kuduro - Don Omar ft. Lucenzo",
+  "Taboo - Don Omar",
+  "Zumba - Don Omar",
+  "Dile - Don Omar",
+  "Gasolina - Daddy Yankee",
+  "Rompe - Daddy Yankee",
+  "Lo Que Pasó, Pasó - Daddy Yankee",
+  "Shaky Shaky - Daddy Yankee",
+  "Limbo - Daddy Yankee",
+  "Con Calma - Daddy Yankee ft. Snow",
+  "La Despedida - Daddy Yankee",
+  "Baila Baila Baila - Ozuna",
+  "Taki Taki - DJ Snake, Selena Gomez, Ozuna, Cardi B",
+  "Caramelo - Ozuna",
+  "Se Preparó - Ozuna",
+  "Criminal - Natti Natasha & Ozuna",
+  "Sin Pijama - Becky G & Natti Natasha",
+  "Mayores - Becky G ft. Bad Bunny",
+  "MAMIII - Becky G & Karol G",
+  "Provenza - Karol G",
+  "Tusa - Karol G ft. Nicki Minaj",
+  "Bichota - Karol G",
+  "X - Nicky Jam & J Balvin",
+  "Travesuras - Nicky Jam",
+  "El Perdón - Nicky Jam & Enrique Iglesias",
+  "Te Boté (RMX) - Nio Garcia, Darell, Casper, Ozuna, Bad Bunny, Nicky Jam",
+  "La Canción - J Balvin & Bad Bunny",
+  "I Like It - Cardi B, Bad Bunny, J Balvin",
+  "Mi Gente - J Balvin & Willy William",
+  "Ginza - J Balvin",
+  "Que Calor - Major Lazer, J Balvin, El Alfa",
+  "Safari - J Balvin ft. Pharrell, BIA, Sky",
+  "China - Anuel AA, Daddy Yankee, Karol G, Ozuna, J Balvin",
+  "La Jeepeta (RMX) - Nio Garcia, Anuel AA, Myke Towers",
+  "Dákiti - Bad Bunny & Jhay Cortez",
+  "Me Porto Bonito - Bad Bunny & Chencho Corleone",
+  "Tití Me Preguntó - Bad Bunny",
+  "Callaita - Bad Bunny & Tainy",
+  "Ojitos Lindos - Bad Bunny & Bomba Estéreo",
+  "La Rompe Corazones - Daddy Yankee & Ozuna",
+  "Que Viva la Vida - Wisin",
+  "Adrenalina - Wisin ft. Ricky Martin, Jennifer Lopez",
+  "Algo Me Gusta de Ti - Wisin & Yandel ft. Chris Brown, T-Pain",
+  "Pam Pam - Wisin & Yandel",
+  "Rakata - Wisin & Yandel",
+  "Abusadora - Wisin & Yandel",
+  "Follow the Leader - Wisin & Yandel ft. Jennifer Lopez",
+  "Suavemente - Elvis Crespo",
+  "Píntame - Elvis Crespo",
+  "Bailar - Elvis Crespo ft. Deorro",
+  "Bachata en Kingston - Vicente Garcia",
+  "Propuesta Indecente - Romeo Santos",
+  "Eres Mía - Romeo Santos",
+  "Obsesión - Aventura",
+  "Dile al Amor - Aventura",
+  "Ella y Yo - Aventura ft. Don Omar",
+  "La Gozadera - Gente de Zona ft. Marc Anthony",
+  "Vivir Mi Vida - Marc Anthony",
+  "Valió la Pena - Marc Anthony",
+  "Ahora Quién - Marc Anthony",
+  "Escapémonos - Marc Anthony & Jennifer Lopez",
+  "Bailar Contigo - Carlos Vives",
+  "La Bicicleta - Carlos Vives & Shakira",
+  "Hips Don’t Lie - Shakira ft. Wyclef Jean",
+  "Chantaje - Shakira ft. Maluma",
+  "La La La (Brazil 2014) - Shakira",
+  "Waka Waka - Shakira",
+  "Rabiosa - Shakira ft. Pitbull",
+  "Bon Bon - Pitbull",
+  "Hotel Room Service - Pitbull",
+  "Don’t Stop the Party - Pitbull",
+  "Echa Pa’lla - Pitbull",
+  "Fireball - Pitbull ft. John Ryan"
+]
+  ,
+  "Gospel / Scripture": [
+  "Take Me to the King - Tamela Mann",
+  "I Can Only Imagine - MercyMe",
+  "Break Every Chain - Tasha Cobbs Leonard",
+  "No Weapon - Fred Hammond",
+  "Jesus Be a Fence - Fred Hammond",
+  "We're Blessed - Fred Hammond",
+  "This Is the Day - Fred Hammond",
+  "Total Praise - Richard Smallwood",
+  "Center of My Joy - Richard Smallwood",
+  "Jesus Is Love - Commodores",
+  "The Battle Is the Lord’s - Yolanda Adams",
+  "Open My Heart - Yolanda Adams",
+  "I Believe - Yolanda Adams",
+  "Victory - Yolanda Adams",
+  "Even Me - Yolanda Adams",
+  "Encourage Yourself - Donald Lawrence",
+  "Bless Me - Donald Lawrence",
+  "The Blessing of Abraham - Donald Lawrence",
+  "Never Would Have Made It - Marvin Sapp",
+  "The Best in Me - Marvin Sapp",
+  "My Testimony - Marvin Sapp",
+  "I Win - Marvin Sapp",
+  "He Saw the Best in Me - Marvin Sapp",
+  "Every Praise - Hezekiah Walker",
+  "Grateful - Hezekiah Walker",
+  "Souled Out - Hezekiah Walker",
+  "Better - Hezekiah Walker",
+  "Faithful Is Our God - Hezekiah Walker",
+  "Awesome - Charles Jenkins & Fellowship Chicago",
+  "My God Is Awesome - Charles Jenkins",
+  "Just Want to Praise You - Maurette Brown Clark",
+  "It Ain’t Over - Maurette Brown Clark",
+  "I Just Want to Praise You Forever - Rev. Milton Brunson",
+  "There’s a Leak in This Old Building - Rev. Milton Brunson",
+  "God Is - James Cleveland",
+  "Peace Be Still - James Cleveland",
+  "Something About the Name Jesus - Kirk Franklin & Rance Allen",
+  "Looking for You - Kirk Franklin",
+  "I Smile - Kirk Franklin",
+  "Stomp - Kirk Franklin",
+  "Brighter Day - Kirk Franklin",
+  "Love Theory - Kirk Franklin",
+  "Imagine Me - Kirk Franklin",
+  "My Life Is in Your Hands - Kirk Franklin",
+  "Hosanna - Kirk Franklin",
+  "Why We Sing - Kirk Franklin",
+  "No Gray - Jonathan McReynolds",
+  "Cycles - Jonathan McReynolds",
+  "Make Room - Jonathan McReynolds",
+  "Grace - Jonathan McReynolds",
+  "Gotta Have You - Jonathan McReynolds",
+  "Moving Forward - Israel & New Breed",
+  "Alpha and Omega - Israel & New Breed",
+  "You Are Good - Israel & New Breed",
+  "Friend of God - Israel & New Breed",
+  "Again I Say Rejoice - Israel & New Breed",
+  "I Am Not Forgotten - Israel & New Breed",
+  "To Worship You I Live - Israel & New Breed",
+  "Lord You’re Mighty - JJ Hairston & Youthful Praise",
+  "You Deserve It - JJ Hairston & Youthful Praise",
+  "Incredible God, Incredible Praise - JJ Hairston",
+  "After This - JJ Hairston",
+  "No Reason to Fear - JJ Hairston",
+  "Bless the Lord - Myron Butler & Levi",
+  "Stronger - Myron Butler & Levi",
+  "Set Me Free - Myron Butler & Levi",
+  "Speak - Myron Butler & Levi",
+  "More Than Anything - Lamar Campbell",
+  "I Love You Jesus - Lamar Campbell",
+  "Bless the Lord at All Times - Lamar Campbell",
+  "God Provides - Tamela Mann",
+  "Change Me - Tamela Mann",
+  "He Did It for Me - Tamela Mann",
+  "Finished Work - Tamela Mann"
+]
+  ,
+  "TV Intros": [
+    "Friends", "Fresh Prince", "The Office", "Cheers", "Game of Thrones",
+    "Family Matters", "Full House", "The Simpsons", "Stranger Things", "Curb Your Enthusiasm",
+    "Seinfeld", "The Jeffersons", "Power", "Martin", "Living Single",
+    "Golden Girls", "Breaking Bad", "Insecure", "Saved By The Bell", "Rick and Morty",
+    "X-Men", "SpongeBob", "Kenan & Kel", "A Different World", "Good Times"
+  ],
+};
+
+    /* -------------------------
+       ELEMENT REFERENCES
+       ------------------------- */
+    const themeSelect = document.getElementById('theme-select');
+    const songQueue = document.getElementById('song-queue');
+    const previewSongEl = document.getElementById('preview-song');
+    const broadcastBtn = document.getElementById('broadcast-btn');
+    const randomBtn = document.getElementById('random-btn');
+    const patternSelect = document.getElementById('pattern-select');
+
+    let calledSongs = new Set();
+    let currentPreview = null;
+
+    /* -------------------------
+       POPULATE THEME DROPDOWN
+       ------------------------- */
+    Object.keys(themes).forEach(t => {
+      const option = document.createElement('option');
+      option.value = t;
+      option.textContent = t;
+      themeSelect.appendChild(option);
+    });
+
+    /* -------------------------
+       SONG QUEUE POPULATION
+       ------------------------- */
+    function populateSongQueue(theme) {
+      songQueue.innerHTML = '';
+      themes[theme].forEach(song => {
+        const opt = document.createElement('option');
+        opt.value = song;
+        opt.textContent = song;
+        songQueue.appendChild(opt);
+      });
+    }
+
+    populateSongQueue(themeSelect.value || Object.keys(themes)[0]);
+
+    themeSelect.addEventListener('change', () => {
+      calledSongs.clear();
+      populateSongQueue(themeSelect.value);
+    });
+
+    /* -------------------------
+       START GAME
+       ------------------------- */
+    function startGame() {
+      const themeName = themeSelect.value;
+      socket.emit('startgame', { name: themeName, songs: themes[themeName] });
+      calledSongs.clear();
+      populateSongQueue(themeName);
+    }
+
+    /* -------------------------
+       SELECT SONG FROM DROPDOWN
+       ------------------------- */
+    songQueue.addEventListener('change', () => {
+      currentPreview = songQueue.value;
+      previewSongEl.textContent = currentPreview;
+      broadcastBtn.disabled = false;
+    });
+
+    /* -------------------------
+       RANDOM SONG CALL
+       ------------------------- */
+    randomBtn.addEventListener('click', () => {
+      const theme = themeSelect.value;
+      const available = themes[theme].filter(song => !calledSongs.has(song));
+      if (!available.length) return alert("All songs called.");
+      currentPreview = available[Math.floor(Math.random() * available.length)];
+      previewSongEl.textContent = currentPreview;
+      broadcastBtn.disabled = false;
+    });
+
+    /* -------------------------
+       CONFIRM SONG CALL
+       ------------------------- */
+    broadcastBtn.addEventListener('click', () => {
+      if (!currentPreview) return;
+      if (calledSongs.has(currentPreview)) return alert("That song has already been called.");
+      calledSongs.add(currentPreview);
+      socket.emit('confirmSong', currentPreview);
+      const li = document.createElement('li');
+      li.textContent = currentPreview;
+      document.getElementById('call-log').prepend(li);
+      previewSongEl.textContent = 'None';
+      broadcastBtn.disabled = true;
+      currentPreview = null;
+    });
+
+    /* -------------------------
+       PATTERN CHANGE
+       ------------------------- */
+    patternSelect.addEventListener('change', () => {
+      socket.emit('pattern-change', patternSelect.value);
+    });
+
+    /* -------------------------
+       CLEAR SONGS
+       ------------------------- */
+    document.getElementById("clear-btn").addEventListener("click", () => {
+      socket.emit('clear-songs'); // Clears bigscreen + clients
+
+      // ✅ Clear the Song Call Log on the host page
+      const callLog = document.getElementById('call-log');
+      callLog.innerHTML = '';
+    });
+
+    /* -------------------------
+       LOBBY UPDATES
+       ------------------------- */
+    socket.on('player-list', names => {
+      const lobbyList = document.getElementById('lobby-list');
+      lobbyList.innerHTML = '';
+      names.forEach(name => {
+        const li = document.createElement('li');
+        li.textContent = name;
+        lobbyList.appendChild(li);
+      });
+      document.getElementById('player-count').textContent = `👥 Players Connected: ${names.length}`;
+    });
+
+    /* -------------------------
+       SONG CALLED FROM SERVER
+       ------------------------- */
+    socket.on('new-call', item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      document.getElementById('call-log').prepend(li);
+    });
+
+    // ✅ Show visual notification when someone calls BINGO
+// ✅ Show alert() AND banner, plus allow manual clear
+socket.on('bingo-alert', msg => {
+  // Original popup alert
+  alert(msg);
+
+  const alertBox = document.getElementById('bingo-alerts');
+  alertBox.innerHTML = `
+    ${msg}
+    <button id="clear-alert-btn" style="
+      margin-left: 10px; 
+      font-size: 0.9em; 
+      padding: 3px 8px; 
+      cursor: pointer;">
+      Clear
+    </button>
+  `;
+  alertBox.style.display = 'block';
+
+  // Manual clear handler
+  document.getElementById('clear-alert-btn').addEventListener('click', () => {
+    alertBox.style.display = 'none';
+    alertBox.textContent = '';
+  });
+});
+  </script>
+</body>
+</html>

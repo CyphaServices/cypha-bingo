@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🎯 Cypha Bingo - Big Screen</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/bigscreen.css" />
+</head>
+<body>
+  <div id="bigscreen-wrapper">
+    <h1 id="bingo-title">🎶 Now Playing</h1>
+    <div id="current-song">Waiting for host...</div>
+
+    <div id="recent-songs-title">🕘 Previously Called</div>
+    <ul id="recent-songs"></ul>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const currentSongEl = document.getElementById('current-song');
+    const recentSongsEl = document.getElementById('recent-songs');
+
+    const maxRecent = 5;
+    const recentSongs = [];
+    let lastSong = null;
+
+    // Listen for a new song broadcast from host
+    socket.on('broadcastSong', (songTitle) => {
+      // Add the last song to the recent list if it exists and is different
+      if (lastSong && lastSong !== songTitle) {
+        if (recentSongs.length >= maxRecent) recentSongs.shift();
+        recentSongs.push(lastSong);
+      }
+
+      // Update Now Playing
+      lastSong = songTitle;
+      currentSongEl.textContent = songTitle;
+
+      // Refresh recent songs display
+      recentSongsEl.innerHTML = '';
+      recentSongs.slice().reverse().forEach(song => {
+        const li = document.createElement('li');
+        li.textContent = song;
+        recentSongsEl.appendChild(li);
+      });
+    });
+
+    // Clear bigscreen display when host triggers clear
+    socket.on('clear-bigscreen', () => {
+      recentSongs.length = 0;
+      recentSongsEl.innerHTML = '';
+      currentSongEl.textContent = 'Waiting for host...';
+      lastSong = null;
+    });
+  </script>
+</body>
+</html>

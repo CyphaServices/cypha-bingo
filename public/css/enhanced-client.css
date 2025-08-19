@@ -1,0 +1,251 @@
+body {
+  background: url('../images/wallpaperv1.jpg') no-repeat center center fixed;
+  background-size: cover;
+  font-family: 'Orbitron', sans-serif;
+  margin: 0;
+  padding: 0;
+  color: white;
+  text-align: center;
+}
+
+#top-bar {
+  padding: 20px 0;
+}
+
+#player-name, #card-toggle {
+  font-size: 1.2rem;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  margin: 0 10px;
+}
+
+.bingo-wrapper {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 3vw;
+  padding: 2vh 0;
+  width: 100%;
+}
+
+.bingo-card {
+  width: 90vw;
+  max-width: 420px;
+  aspect-ratio: 1 / 1; /* maintain perfect square */
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, 1fr);
+  gap: 6px;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 1); /* full opacity black */
+  border: 3px solid cyan;
+  border-radius: 20px;
+  flex-shrink: 0; /* ✅ Prevent shrinking in .bingo-wrapper */
+}
+
+.bingo-tile {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #444; /* stronger gray */
+  border: 2px solid #0ff;
+  color: white;
+  font-size: 0.85rem;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  word-wrap: break-word;
+  text-align: center;
+  overflow: hidden;
+  line-height: 1.1em;
+  z-index: 2;
+}
+
+.bingo-tile.free {
+  background-color: cyan;
+  color: black;
+  font-weight: bold;
+}
+
+.bingo-tile.selected {
+  background-color: #f39c12;
+  color: black;
+}
+
+.bingo-tile.highlighted {
+  background-color: #e74c3c !important;
+  color: white;
+}
+
+.exit-button {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 20px;
+  background-color: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.exit-button:hover {
+  background-color: #1aff85;
+}
+
+.pulse {
+  animation: pulse-glow 1.5s ease-in-out;
+}
+
+.back-btn {
+  padding: 8px 14px;
+  background-color: #444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  margin-left: 12px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.back-btn:hover {
+  background-color: #222;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  justify-content: center;
+  align-items: center;
+  font-family: inherit;
+}
+
+.modal-content {
+  background: #111;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 0 20px rgba(255,255,255,0.1);
+}
+
+.modal-content h3 {
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.modal-content p {
+  color: #ccc;
+}
+
+.modal-buttons button {
+  margin: 8px;
+  padding: 10px 18px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+#resume-yes {
+  background-color: #2e7d32;
+  color: white;
+}
+
+#resume-no {
+  background-color: #c62828;
+  color: white;
+}
+
+body.modal-open {
+  pointer-events: none;
+}
+
+.modal {
+  pointer-events: auto; /* allow interaction only with modal */
+}
+
+/* Add near bottom of CSS */
+.call-bingo-activated {
+  animation: glow-activate 10s ease-in-out;
+}
+
+#call-bingo-btn {
+  font-size: 2rem;
+  padding: 1rem 2rem;
+  background: linear-gradient(to right, #f83600, #f9d423); /* Sunset gradient */
+  color: white;
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  animation: pulse 2s infinite;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-family: 'Bangers', cursive;
+  letter-spacing: 1px;
+}
+
+#call-bingo-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 200, 50, 0.8);
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.call-bingo-activated {
+  background: linear-gradient(to right, #00c6ff, #0072ff) !important;
+  color: #fff;
+  box-shadow: 0 0 25px rgba(0, 114, 255, 0.9);
+}
+
+
+@keyframes glow-activate {
+  0% {
+    box-shadow: 0 0 0px #ff66cc;
+    background-color: #ff66cc;
+    color: black;
+  }
+  50% {
+    box-shadow: 0 0 50px 25px #ff99cc;
+    background-color: #ff99cc;
+  }
+  100% {
+    box-shadow: 0 0 0px #ff66cc;
+    background-color: inherit;
+    color: inherit;
+  }
+}
+
+
+
+@keyframes pulse-glow {
+  0% { box-shadow: 0 0 0px #fff; }
+  50% { box-shadow: 0 0 20px 5px #fff; }
+  100% { box-shadow: 0 0 0px #fff; }
+}
+
+/*
+@media screen and (min-width: 768px) {
+  .bingo-card {
+    width: 40vw;
+    max-width: 420px;
+  }
+}
+*/

@@ -1,0 +1,162 @@
+/* =========================================
+   GENERAL PAGE STYLES
+   ========================================= */
+body {
+  background: url('../images/wallpaperv1.jpg') no-repeat center center fixed;
+  background-size: cover;
+  color: #fff;
+  font-family: 'Orbitron', sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-y: hidden; /* Prevent vertical scroll bar */
+}
+
+/* =========================================
+   PAGE TITLE
+   ========================================= */
+.page-title {
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* =========================================
+   LAYOUT: 3 COLUMN GRID
+   ========================================= */
+#main-columns {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr; /* Left, Center, Right */
+  gap: 20px;
+  padding: 20px;
+  align-items: start;
+}
+
+/* =========================================
+   COLUMN CONTAINERS
+   ========================================= */
+.column {
+  background: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.center-column {
+  text-align: center;
+}
+
+/* =========================================
+   LIST STYLING FOR PLAYERS & SONG LOG
+   ========================================= */
+#lobby-list,
+#call-log {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+#lobby-list li,
+#call-log li {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 6px 10px;
+  margin-bottom: 5px;
+  border-left: 3px solid #00f0ff;
+  font-family: monospace;
+}
+
+/* =========================================
+   NEXT SONG PREVIEW BOX
+   ========================================= */
+#preview-wrapper {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid #00f0ff;
+  border-radius: 10px;
+  padding: 15px;
+  margin: 15px 0;
+  color: #00f0ff;
+  text-align: center;
+  box-shadow: 0 0 15px #00f0ff; /* Glow effect */
+}
+
+/* =========================================
+   BUTTONS: HOST ACTIONS
+   ========================================= */
+.host-btn {
+  background: #00f0ff;
+  color: #000;
+  padding: 10px 18px;
+  font-size: 1em;
+  border: none;
+  border-radius: 6px;
+  margin: 6px 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.host-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   BUTTONS: THEME / START GAME
+   ========================================= */
+.theme-btn {
+  background: rgb(45, 103, 239);
+  color: black;
+  padding: 12px 20px;
+  margin: 10px 0;
+  font-size: 16px;
+  border: none;
+  cursor: pointer;
+}
+
+/* =========================================
+   PLAYER COUNT DISPLAY
+   ========================================= */
+#player-count {
+  font-size: 1.1em;
+  margin-top: 8px;
+  color: #0ff;
+}
+
+/* =========================================
+   BINGO ALERT BOX (HOST SIDE)
+   ========================================= */
+.bingo-alert-box {
+  background: rgba(255, 215, 0, 0.15);
+  border: 2px solid #ffd700;
+  color: #ffd700;
+  font-size: 1.2em;
+  font-weight: bold;
+  padding: 10px;
+  margin-top: 10px;
+  border-radius: 6px;
+  text-align: center;
+  display: none; /* Hidden until a claim arrives */
+}
+
+/* =========================================
+   BINGO PATTERN WRAPPER
+   ========================================= */
+.pattern-select-wrapper {
+  margin-top: 10px;
+}
+
+.pattern-select-wrapper label {
+  color: #fff;
+  margin-right: 5px;
+}
+
+/* =========================================
+   SONG QUEUE WRAPPER
+   ========================================= */
+#song-queue-wrapper {
+  margin-top: 10px;
+}
+
+/* =========================================
+   HEADERS INSIDE COLUMNS
+   ========================================= */
+.column h3 {
+  margin-top: 0;
+  text-align: center;
+}

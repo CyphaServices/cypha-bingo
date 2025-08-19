@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cypha Bingo</title>
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/enhanced-client.css" />
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/assets/confetti.browser.js"></script>
+  <script src="main.js" defer></script>
+</head>
+<body>
+  <!-- WELCOME SCREEN -->
+  <div id="welcome-screen">
+    <h2>Welcome to Cypha Bingo</h2>
+    <input type="text" id="player-name" placeholder="Enter your name" />
+    <button id="enter-game-btn">Enter Game</button>
+  </div>
+
+  <!-- MAIN BINGO INTERFACE -->
+  <div id="game-ui" style="display: none;">
+    <h1>🎤 Cypha Bingo</h1>
+    <div id="top-bar">
+      <button id="card-toggle">1 Card / 2 Cards</button>
+    </div>
+
+    <div id="pattern-bar" style="margin: 15px auto; font-size: 1.2em; color: #ff0;"></div>
+
+    <button id="new-game-btn" class="secondary">New Game</button>
+
+    <div class="bingo-wrapper">
+      <div class="bingo-card" id="bingo-card-1"></div>
+      <div class="bingo-card" id="bingo-card-2"></div>
+    </div>
+
+    <div id="bingo-call-bar">
+      <button id="call-bingo-btn">Call BINGO!</button>
+
+      <!-- ✅ Updated Back Button -->
+      <!-- ✅ Clean and valid -->
+<button id="back-btn" class="back-btn" onclick="goBackToCypha()">← Back to Main Screen</button>
+    </div>
+  </div>
+
+  <!-- ✅ JavaScript to call Android bridge -->
+  <script>
+    function goBackToCypha() {
+      if (window.CyphaBridge && typeof window.CyphaBridge.goHome === 'function') {
+        window.CyphaBridge.goHome(); // Calls the native Android function
+      } else {
+        alert("Back function not available.");
+      }
+    }
+  </script>
+
+  <!-- Custom Resume Modal -->
+  <div id="resume-modal" class="modal">
+    <div class="modal-content">
+      <h3>Resume Game?</h3>
+      <p id="resume-message">Continue as <strong id="resume-name"></strong>?</p>
+      <div class="modal-buttons">
+        <button id="resume-yes">Yes</button>
+        <button id="resume-no">No</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

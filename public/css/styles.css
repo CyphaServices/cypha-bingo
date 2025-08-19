@@ -1,0 +1,60 @@
+/* General Styles and Reset */
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: url('../images/wallpaperv1.jpg') no-repeat center center fixed;
+  background-size: cover;
+  color: #ffffff;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  margin: 0;
+  -webkit-backdrop-filter: brightness(0.7); /* Added for Safari support */
+  backdrop-filter: brightness(0.7);
+}
+
+/* Logo (Main Title) */
+.logo {
+  font-size: 3em;
+  color: #00e5ff;
+  text-shadow: 0 0 20px #00e5ff;
+  margin-bottom: 0.2em;
+}
+
+/* Tagline */
+.tagline {
+  font-size: 1.2em;
+  color: #ff5ca1;
+  margin-bottom: 1em;
+}
+
+/* Buttons Grid Container */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  width: 90%;
+  max-width: 800px;
+}
+
+/* Individual Buttons */
+.btn {
+  background-color: rgba(0, 0, 0, 0.5);
+  border: 2px solid #00e5ff;
+  border-radius: 15px;
+  padding: 15px;
+  font-size: 1em;
+  color: #00e5ff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(0, 229, 255, 0.5);
+}
+
+/* Button Hover Effect */
+.btn:hover {
+  background-color: rgba(0, 229, 255, 0.3);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.8);
+  transform: scale(1.05);
+}
