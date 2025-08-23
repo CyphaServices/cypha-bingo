@@ -30,8 +30,7 @@ window.addEventListener("DOMContentLoaded", () => {
       console.log("🔁 Resuming session for player:", savedName);
       currentPlayerName = savedName;
       socket.emit("join-game", savedName);
-      welcomeScreen.style.display = "none";
-      gameUI.style.display = "block";
+      // wait for server join-accepted before showing UI
     } else {
       const modal = document.getElementById("resume-modal");
       const resumeNameEl = document.getElementById("resume-name");
@@ -46,8 +45,7 @@ window.addEventListener("DOMContentLoaded", () => {
         sessionStorage.setItem("cyphaResume", "true");
         currentPlayerName = savedName;
         socket.emit("join-game", savedName);
-        welcomeScreen.style.display = "none";
-        gameUI.style.display = "block";
+  // wait for server join-accepted before showing UI
         modal.style.display = "none";
         document.body.classList.remove("modal-open");
       };
@@ -79,10 +77,9 @@ window.addEventListener("DOMContentLoaded", () => {
         console.warn("⚠️ Could not store player name:", err.message);
       }
 
-      socket.emit("join-game", name);
-      welcomeScreen.style.display = "none";
-      gameUI.style.display = "block";
-      console.log("✅ Entered game as:", name);
+  socket.emit("join-game", name);
+  // wait for 'join-accepted' event before showing the UI
+  console.log("⏳ Sent join request as:", name);
     });
   }
 
@@ -173,8 +170,46 @@ window.addEventListener("DOMContentLoaded", () => {
     card2.style.display = usingTwoCards ? "grid" : "none";
   });
 
+  socket.on('join-accepted', (name) => {
+    console.log('✅ Join accepted for', name);
+    currentPlayerName = name;
+    try {
+      localStorage.setItem('playerName', name);
+    } catch (err) {}
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const gameUI = document.getElementById('game-ui');
+    if (welcomeScreen) welcomeScreen.style.display = 'none';
+    if (gameUI) gameUI.style.display = 'block';
+  });
+
+  socket.on('join-failed', (reason) => {
+    console.warn('❌ Join failed:', reason);
+    alert(reason || 'Unable to join the game.');
+    const nameInput = document.getElementById('player-name');
+    if (nameInput) nameInput.focus();
+  });
+
   socket.onAny((event, ...args) => {
     console.log("📡 Event:", event, args);
+  });
+
+  socket.on('game-info', info => {
+    const gi = document.getElementById('game-info');
+    if (gi) gi.textContent = `Game: ${info.gameId || '-'} — ${info.theme || 'No theme'}`;
+  });
+
+  socket.on('name-disambiguated', (newName) => {
+    alert(`Name in use — you've been assigned: ${newName}`);
+    currentPlayerName = newName;
+  });
+
+  socket.on('join-failed', (reason) => {
+    const modal = document.getElementById('join-failed-modal');
+    const msg = document.getElementById('join-failed-message');
+    const ok = document.getElementById('join-failed-ok');
+    if (msg) msg.textContent = reason || 'Unable to join';
+    if (modal) modal.style.display = 'flex';
+    if (ok) ok.onclick = () => { modal.style.display = 'none'; };
   });
 
   socket.on("connect", () => {

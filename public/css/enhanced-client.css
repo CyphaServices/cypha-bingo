@@ -12,6 +12,18 @@ body {
   padding: 20px 0;
 }
 
+#game-info {
+  margin: 8px auto;
+  font-size: 0.95em;
+  color: #0ff;
+}
+
+#pattern-bar {
+  margin: 15px auto;
+  font-size: 1.2em;
+  color: #ff0;
+}
+
 #player-name, #card-toggle {
   font-size: 1.2rem;
   padding: 10px;
@@ -153,6 +165,15 @@ body {
   border-radius: 6px;
   cursor: pointer;
 }
+
+/* join-failed modal styling */
+#join-failed-modal .modal-content {
+  max-width: 360px;
+}
+
+#join-failed-title { color: #ffcccb; }
+#join-failed-message { color: #fff; }
+#join-failed-ok { background-color: #2196f3; color: white; }
 
 #resume-yes {
   background-color: #2e7d32;
