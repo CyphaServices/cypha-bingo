@@ -18,6 +18,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
+// Always serve the client HTML at root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'client.html'));
+});
+
 // Health check
 app.get('/health', (_req, res) => res.send('ok'));
 
