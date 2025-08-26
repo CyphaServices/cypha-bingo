@@ -208,6 +208,14 @@ window.addEventListener("DOMContentLoaded", () => {
     if (themeEl) themeEl.textContent = info.theme || 'No theme';
   });
 
+  // Some legacy flows send the current theme as a simple 'theme' string.
+  // Keep compatibility for a short window but prefer 'game-info'.
+  socket.on('theme', (theme) => {
+    console.warn('Deprecation: server "theme" event is deprecated, prefer "game-info"');
+    const themeEl = document.getElementById('theme-name');
+    if (themeEl) themeEl.textContent = theme || 'No theme';
+  });
+
   // Listen for now-playing updates (from bigscreen / broadcastSong)
   socket.on('broadcastSong', (songTitle) => {
     const nowEl = document.getElementById('now-playing');

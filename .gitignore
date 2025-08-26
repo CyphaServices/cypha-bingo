@@ -49,6 +49,9 @@ Thumbs.db
 # ==========================
 .vercel
 
+# Runtime persistence (don't commit local game DB)
+data/bingo-db.json
+
 # ==========================
 # IDE / Editor
 # ==========================

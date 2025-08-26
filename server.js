@@ -144,12 +144,15 @@ io.on('connection', (socket) => {
   activePlayers.set(socket.id, finalName);
     updateLobby();
 
-    // send current theme + calls so newcomers catch up
-    socket.emit('theme', currentTheme);
+  // send current theme + calls so newcomers catch up
+  // (deprecated) 'theme' event removed in favor of the structured 'game-info' event
     socket.emit('call-update', callList.slice(0, currentCallIndex + 1));
 
-    // Accept join so client can show UI (return the resolved name)
-    socket.emit('join-accepted', finalName);
+  // Accept join so client can show UI (return the resolved name)
+  socket.emit('join-accepted', finalName);
+  // Send current game info to the joining socket so late-joiners / refreshes
+  // immediately receive the active theme and game id.
+  socket.emit('game-info', { gameId: currentGameId, theme: currentTheme });
 
     // if a theme is active, provide cards for the current game (namespace by gameId)
     if (currentGameId && currentTheme && callList.length > 0) {
@@ -192,7 +195,7 @@ io.on('connection', (socket) => {
     callList = shuffle([...(theme?.songs || [])]);
     currentCallIndex = -1;
 
-    io.emit('theme', currentTheme);
+  // (deprecated) 'theme' event removed; clients should use 'game-info'
     io.emit('call-update', []); // reset calls on clients
 
   // broadcast game info for clients (useful for debugging / display)
