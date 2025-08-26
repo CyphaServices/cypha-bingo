@@ -74,9 +74,10 @@ async function loadDb() {
 
 async function saveDb() {
   try {
-    db.data.currentGameId = currentGameId;
-    db.data.playerCardsByGame = playerCardsByGame;
-    await db.write();
+  db.data = db.data || {};
+  db.data.currentGameId = currentGameId;
+  db.data.playerCardsByGame = playerCardsByGame;
+  await db.write();
   } catch (err) {
     console.warn('⚠️ Could not write DB:', err.message);
   }
@@ -94,35 +95,61 @@ io.on('connection', (socket) => {
     io.emit('clear-bigscreen');
   });
 
-  // player joins game (playerName is a string)
-  socket.on('join-game', (playerName) => {
-    const name = typeof playerName === 'string' ? playerName.trim() : '';
+  // player joins game (accepts string name or object { name, resume })
+  socket.on('join-game', (payload) => {
+    // extract name and resume flag from either a string or object payload
+    let name = '';
+    let resume = false;
+    if (typeof payload === 'string') {
+      name = payload.trim();
+    } else if (payload && typeof payload === 'object') {
+      name = typeof payload.name === 'string' ? payload.name.trim() : '';
+      resume = payload.resume === true;
+    }
+
     if (!name) {
       socket.emit('join-failed', 'Invalid name');
       return;
     }
 
-    // enforce unique player names among currently connected sockets
-    let finalName = name;
-    const nameTaken = Array.from(activePlayers.entries()).some(([sid, pname]) => pname === finalName && sid !== socket.id);
-    if (nameTaken) {
-      // automatic disambiguation: append #n
-      let suffix = 2;
-      while (Array.from(activePlayers.values()).includes(`${name}#${suffix}`)) suffix++;
-      finalName = `${name}#${suffix}`;
-      socket.emit('name-disambiguated', finalName);
+    // If resuming, reclaim the name from any previous socket mapping so this
+    // socket becomes the authoritative session for that player.
+    if (resume) {
+      const prev = Array.from(activePlayers.entries()).find(([, pname]) => pname === name);
+      if (prev) {
+        const [prevSid] = prev;
+        if (prevSid !== socket.id) {
+          console.log(`🔁 Reclaiming name '${name}' from previous socket ${prevSid}`);
+          activePlayers.delete(prevSid);
+        }
+      }
     }
 
-    // register player
-    activePlayers.set(socket.id, name);
+    // enforce unique player names among currently connected sockets unless
+    // the client is explicitly resuming
+    let finalName = name;
+    if (!resume) {
+      const nameTaken = Array.from(activePlayers.entries()).some(([sid, pname]) => pname === finalName && sid !== socket.id);
+      if (nameTaken) {
+        // automatic disambiguation: append #n
+        let suffix = 2;
+        while (Array.from(activePlayers.values()).includes(`${name}#${suffix}`)) suffix++;
+        finalName = `${name}#${suffix}`;
+        socket.emit('name-disambiguated', finalName);
+      }
+    }
+
+  // register player using resolved name (may have been disambiguated or reclaimed)
+  console.log(`➡️ join-game payload:`, payload, `-> resolved: ${finalName} (resume: ${resume})`);
+  activePlayers.set(socket.id, finalName);
     updateLobby();
 
     // send current theme + calls so newcomers catch up
     socket.emit('theme', currentTheme);
     socket.emit('call-update', callList.slice(0, currentCallIndex + 1));
 
-    // Accept join so client can show UI
-    socket.emit('join-accepted', name);
+    // Accept join so client can show UI (return the resolved name)
+    socket.emit('join-accepted', finalName);
 
     // if a theme is active, provide cards for the current game (namespace by gameId)
     if (currentGameId && currentTheme && callList.length > 0) {
@@ -222,7 +249,10 @@ io.on('connection', (socket) => {
   });
 });
 
-// ---------- Start server ----------
-server.listen(PORT, () => {
-  console.log(`✅ Bingo server listening on :${PORT}`);
-});
+// ---------- Start server (ensure DB is loaded first) ----------
+(async () => {
+  await loadDb();
+  server.listen(PORT, () => {
+    console.log(`✅ Bingo server listening on :${PORT}`);
+  });
+})();

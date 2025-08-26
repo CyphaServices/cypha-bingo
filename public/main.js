@@ -141,7 +141,14 @@ window.addEventListener("DOMContentLoaded", () => {
   function buildTile(name) {
     const tile = document.createElement("div");
     tile.className = "bingo-tile";
-    tile.textContent = name;
+  // If the incoming name is in the format "Song - Artist", show only the
+  // Song part on the tile to save space, but keep the full string as a
+  // tooltip so users can see the artist on hover.
+  const full = typeof name === 'string' ? name : '';
+  const parts = full.split(' - ');
+  const songOnly = parts.length > 0 ? parts[0].trim() : full;
+  tile.textContent = songOnly;
+  tile.title = full;
 
     if (name === "FREE SPACE") {
       tile.classList.add("free", "selected");
@@ -180,6 +187,9 @@ window.addEventListener("DOMContentLoaded", () => {
     const gameUI = document.getElementById('game-ui');
     if (welcomeScreen) welcomeScreen.style.display = 'none';
     if (gameUI) gameUI.style.display = 'block';
+  // update player display
+  const pd = document.getElementById('player-display');
+  if (pd) pd.textContent = `Player: ${currentPlayerName}`;
   });
 
   socket.on('join-failed', (reason) => {
@@ -194,8 +204,14 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   socket.on('game-info', info => {
-    const gi = document.getElementById('game-info');
-    if (gi) gi.textContent = `Game: ${info.gameId || '-'} — ${info.theme || 'No theme'}`;
+    const themeEl = document.getElementById('theme-name');
+    if (themeEl) themeEl.textContent = info.theme || 'No theme';
+  });
+
+  // Listen for now-playing updates (from bigscreen / broadcastSong)
+  socket.on('broadcastSong', (songTitle) => {
+    const nowEl = document.getElementById('now-playing');
+    if (nowEl) nowEl.textContent = `Now Playing: ${songTitle || '—'}`;
   });
 
   socket.on('name-disambiguated', (newName) => {
@@ -214,6 +230,13 @@ window.addEventListener("DOMContentLoaded", () => {
 
   socket.on("connect", () => {
     console.log("✅ Connected to server via socket.io:", socket.id);
+    // If we already had a player name (stored), re-assert it so the server
+    // treats this socket as the active session for that player. Use the
+    // resume flag so the server will replace any previous mapping.
+    if (currentPlayerName) {
+      console.log('🔁 Re-joining as', currentPlayerName);
+      socket.emit('join-game', { name: currentPlayerName, resume: true });
+    }
   });
 
   socket.on("connect_error", (err) => {

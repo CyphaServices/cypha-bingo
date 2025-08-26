@@ -8,6 +8,8 @@ body {
   text-align: center;
 }
 
+#game-ui { display: none; }
+
 #top-bar {
   padding: 20px 0;
 }
@@ -22,6 +24,32 @@ body {
   margin: 15px auto;
   font-size: 1.2em;
   color: #ff0;
+}
+
+/* Info box (player + theme + now playing) */
+.info-box {
+  max-width: 480px;
+  margin: 12px auto;
+  background: rgba(0,0,0,0.6);
+  border: 2px solid #0ff;
+  border-radius: 14px;
+  padding: 10px 14px;
+  text-align: center;
+}
+.player-display {
+  font-size: 1.05rem;
+  color: #fff;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.theme-name {
+  font-size: 0.95rem;
+  color: #0ff;
+  margin-bottom: 6px;
+}
+.now-playing {
+  font-size: 0.9rem;
+  color: #ffd700;
 }
 
 #player-name, #card-toggle {

@@ -19,15 +19,20 @@
   </div>
 
   <!-- MAIN BINGO INTERFACE -->
-  <div id="game-ui" style="display: none;">
+  <div id="game-ui">
     <h1>🎤 Cypha Bingo</h1>
     <div id="top-bar">
       <button id="card-toggle">1 Card / 2 Cards</button>
     </div>
 
-  <div id="game-info" style="margin: 8px auto; font-size: 0.95em; color: #0ff;"></div>
+    <!-- Info box: Player name, Theme, Now Playing -->
+    <div class="info-box" role="status" aria-live="polite">
+      <div id="player-display" class="player-display">&nbsp;</div>
+      <div id="theme-name" class="theme-name">No theme</div>
+      <div id="now-playing" class="now-playing">Now Playing: —</div>
+    </div>
 
-    <div id="pattern-bar" style="margin: 15px auto; font-size: 1.2em; color: #ff0;"></div>
+  <div id="pattern-bar"></div>
 
     <button id="new-game-btn" class="secondary">New Game</button>
 
