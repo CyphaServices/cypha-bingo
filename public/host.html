@@ -39,9 +39,11 @@
         <div id="preview-song">None</div>
       </div>
 
-      <!-- MAIN CONTROL BUTTONS -->
-      <button class="host-btn" id="random-btn">🎲 Random Call</button>
-      <button class="host-btn" id="broadcast-btn" disabled>📢 Confirm Call</button>
+  <!-- MAIN CONTROL BUTTONS -->
+  <button class="host-btn" id="random-btn">🎲 Random Call</button>
+  <button class="host-btn" id="broadcast-btn" disabled>📢 Confirm Call</button>
+  <!-- Skip will appear after a Random Call to force a decision -->
+  <button class="host-btn hidden" id="skip-btn" disabled>↩️ Skip Call</button>
 
       <!-- BINGO PATTERN DROPDOWN -->
       <div class="pattern-select-wrapper">
@@ -892,12 +894,16 @@ const themes = {
     const themeSelect = document.getElementById('theme-select');
     const songQueue = document.getElementById('song-queue');
     const previewSongEl = document.getElementById('preview-song');
-    const broadcastBtn = document.getElementById('broadcast-btn');
-    const randomBtn = document.getElementById('random-btn');
+  const broadcastBtn = document.getElementById('broadcast-btn');
+  const randomBtn = document.getElementById('random-btn');
+  const skipBtn = document.getElementById('skip-btn');
     const patternSelect = document.getElementById('pattern-select');
 
-    let calledSongs = new Set();
-    let currentPreview = null;
+  let calledSongs = new Set();
+  let currentPreview = null;
+  // awaitingDecision becomes true when a Random Call is selected and
+  // forces the host to either Confirm (broadcast) or Skip the suggested song.
+  let awaitingDecision = false;
 
     /* -------------------------
        POPULATE THEME DROPDOWN
@@ -945,7 +951,8 @@ const themes = {
     songQueue.addEventListener('change', () => {
       currentPreview = songQueue.value;
       previewSongEl.textContent = currentPreview;
-      broadcastBtn.disabled = false;
+  // Manual selection doesn't force a Skip; only Random does. Enable Confirm.
+  broadcastBtn.disabled = false;
     });
 
     /* -------------------------
@@ -957,7 +964,13 @@ const themes = {
       if (!available.length) return alert("All songs called.");
       currentPreview = available[Math.floor(Math.random() * available.length)];
       previewSongEl.textContent = currentPreview;
-      broadcastBtn.disabled = false;
+  // Force a decision: require Confirm or Skip after Random. Disable Random
+  // until the host makes a choice to avoid forgetting to act.
+  awaitingDecision = true;
+  randomBtn.disabled = true;
+  broadcastBtn.disabled = false;
+  skipBtn.classList.remove('hidden');
+  skipBtn.disabled = false;
     });
 
     /* -------------------------
@@ -966,14 +979,32 @@ const themes = {
     broadcastBtn.addEventListener('click', () => {
       if (!currentPreview) return;
       if (calledSongs.has(currentPreview)) return alert("That song has already been called.");
-      calledSongs.add(currentPreview);
+      // Let the server persist and emit the confirmed call. The host UI will
+      // update when the server broadcasts 'new-call'. This avoids duplication
+      // and keeps server history authoritative.
       socket.emit('confirmSong', currentPreview);
-      const li = document.createElement('li');
-      li.textContent = currentPreview;
-      document.getElementById('call-log').prepend(li);
+      // Reset the preview and decision state after confirming
       previewSongEl.textContent = 'None';
       broadcastBtn.disabled = true;
       currentPreview = null;
+  awaitingDecision = false;
+  randomBtn.disabled = false;
+  skipBtn.classList.add('hidden');
+  skipBtn.disabled = true;
+    });
+
+    /* -------------------------
+       SKIP RANDOM CALL
+       ------------------------- */
+    skipBtn.addEventListener('click', () => {
+      // Host chose to skip the suggested random call. Clear preview and reset.
+      previewSongEl.textContent = 'None';
+      currentPreview = null;
+  awaitingDecision = false;
+  broadcastBtn.disabled = true;
+  randomBtn.disabled = false;
+  skipBtn.classList.add('hidden');
+  skipBtn.disabled = true;
     });
 
     /* -------------------------
@@ -992,6 +1023,14 @@ const themes = {
       // ✅ Clear the Song Call Log on the host page
       const callLog = document.getElementById('call-log');
       callLog.innerHTML = '';
+  // Reset any pending random decision when songs are cleared
+  previewSongEl.textContent = 'None';
+  currentPreview = null;
+  awaitingDecision = false;
+  broadcastBtn.disabled = true;
+  randomBtn.disabled = false;
+  skipBtn.style.display = 'none';
+  skipBtn.disabled = true;
     });
 
     /* -------------------------
@@ -1009,13 +1048,55 @@ const themes = {
     });
 
     /* -------------------------
-       SONG CALLED FROM SERVER
+       FULL CALL HISTORY (on connect / refresh)
        ------------------------- */
-    socket.on('new-call', item => {
-      const li = document.createElement('li');
-      li.textContent = item;
-      document.getElementById('call-log').prepend(li);
+    socket.on('call-update', calls => {
+      const callLog = document.getElementById('call-log');
+      if (!callLog) return;
+      callLog.innerHTML = '';
+      // calls is an array of called items in chronological order; show newest first
+      calledSongs = new Set(calls);
+      // If we were awaiting a decision for a preview that just got called by
+      // someone else, clear the pending preview so the host doesn't accidentally
+      // confirm it later.
+      if (awaitingDecision && currentPreview && calledSongs.has(currentPreview)) {
+        previewSongEl.textContent = 'None';
+        currentPreview = null;
+  awaitingDecision = false;
+  randomBtn.disabled = false;
+  broadcastBtn.disabled = true;
+  skipBtn.classList.add('hidden');
+  skipBtn.disabled = true;
+      }
+      for (let i = calls.length - 1; i >= 0; i--) {
+        const li = document.createElement('li');
+        li.textContent = calls[i];
+        callLog.prepend(li);
+      }
     });
+
+    socket.on('new-call', (item) => {
+      // update host UI and local calledSongs set when server confirms a new call
+      const callLog = document.getElementById('call-log');
+      if (callLog) {
+        const li = document.createElement('li');
+        li.textContent = item;
+        callLog.prepend(li);
+      }
+      // If the confirmed call matches a pending random preview, clear it so
+      // the host can't accidentally confirm it after someone else already did.
+      if (awaitingDecision && currentPreview && item === currentPreview) {
+        previewSongEl.textContent = 'None';
+        currentPreview = null;
+  awaitingDecision = false;
+  randomBtn.disabled = false;
+  broadcastBtn.disabled = true;
+  skipBtn.classList.add('hidden');
+  skipBtn.disabled = true;
+      }
+      calledSongs.add(item);
+    });
+
 
     // ✅ Show visual notification when someone calls BINGO
 // ✅ Show alert() AND banner, plus allow manual clear

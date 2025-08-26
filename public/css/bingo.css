@@ -203,3 +203,8 @@ label[for="song-queue"] {
   display: inline-block;
   vertical-align: middle;
 }
+
+/* Utility: hide an element but keep it available for JS toggling */
+.hidden {
+  display: none !important;
+}

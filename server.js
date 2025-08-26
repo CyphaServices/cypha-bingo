@@ -31,6 +31,7 @@ let currentTheme = '';
 let callList = [];
 let currentCallIndex = -1;
 let currentGameId = null;
+let calledHistory = []; // chronological list of confirmed calls
 
 // playerCardsByGame maps gameId => { playerName => { card1, card2 } }
 let playerCardsByGame = {};
@@ -89,6 +90,13 @@ io.on('connection', (socket) => {
 
   // broadcast player count on connect
   io.emit('player-count', io.engine.clientsCount);
+
+  // send current state to the newly connected socket so hosts/bigscreen
+  // that simply reload do not appear empty. This includes game metadata,
+  // call history up to the current index, and the lobby player list.
+  socket.emit('game-info', { gameId: currentGameId, theme: currentTheme });
+  socket.emit('call-update', calledHistory.slice());
+  socket.emit('player-list', Array.from(activePlayers.values()));
 
   // clear songs for everyone (big screen listens for this)
   socket.on('clear-songs', () => {
@@ -184,7 +192,10 @@ io.on('connection', (socket) => {
 
   // host confirms/broadcasts a song to all screens
   socket.on('confirmSong', (songTitle) => {
-    io.emit('broadcastSong', songTitle);
+  // persist the confirmed call in server history and broadcast
+  calledHistory.push(songTitle);
+  io.emit('broadcastSong', songTitle);
+  io.emit('new-call', songTitle);
   });
 
   // host starts a game with a theme { name, songs }
