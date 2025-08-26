@@ -22,9 +22,10 @@
 
     <!-- MIDDLE COLUMN: Game Controls -->
     <div class="column center-column">
-      <!-- THEME SELECTION + START BUTTON -->
-      <select id="theme-select" class="theme-btn"></select>
-      <button class="theme-btn" onclick="startGame()">Start Game</button>
+  <!-- THEME SELECTION + START BUTTON -->
+  <label for="theme-select">Theme</label>
+  <select id="theme-select" class="theme-btn" aria-label="Theme selection"></select>
+  <button class="theme-btn" onclick="startGame()">Start Game</button>
 
       <!-- DISPLAY PLAYER COUNT -->
       <div id="player-count">👥 Players Connected: 0</div>
@@ -58,7 +59,8 @@
       <!-- SONG QUEUE DROPDOWN -->
       <div id="song-queue-wrapper">
         <h3>🎼 Select a Song from Theme</h3>
-        <select id="song-queue"></select>
+  <label for="song-queue">Song</label>
+  <select id="song-queue" aria-label="Song selection"></select>
       </div>
     </div>
 

@@ -109,6 +109,28 @@ body {
   cursor: pointer;
 }
 
+/* Make theme select and Start Game button rounded and visually consistent */
+.theme-btn {
+  border-radius: 8px;
+}
+
+#theme-select {
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgb(45, 103, 239);
+  color: black;
+  padding: 10px 14px;
+  font-size: 16px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+#theme-select:focus {
+  outline: 3px solid rgba(45, 103, 239, 0.25);
+  outline-offset: 2px;
+}
+
 /* =========================================
    PLAYER COUNT DISPLAY
    ========================================= */
@@ -159,4 +181,25 @@ body {
 .column h3 {
   margin-top: 0;
   text-align: center;
+}
+
+/* Visually hide but keep accessible to screen readers */
+/* Labels for select controls — styled to match the theme button */
+label[for="theme-select"],
+label[for="song-queue"] {
+  display: inline-block;
+  background: rgb(45, 103, 239);
+  color: black;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: 700;
+  margin-right: 8px;
+  font-size: 16px;
+  vertical-align: middle;
+}
+
+/* Ensure selects sit nicely beside their labels */
+#theme-select, #song-queue {
+  display: inline-block;
+  vertical-align: middle;
 }
