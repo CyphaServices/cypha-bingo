@@ -88,11 +88,11 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #444; /* stronger gray */
-  border: 2px solid #0ff;
+  background-color: #02165e;
+  border: 2px solid rgb(235, 209, 16);
   color: white;
   font-size: 0.85rem;
-  padding: 6px;
+  padding: 2px;
   border-radius: 8px;
   cursor: pointer;
   word-wrap: break-word;
