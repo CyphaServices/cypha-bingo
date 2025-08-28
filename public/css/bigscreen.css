@@ -58,3 +58,118 @@ body {
   padding: 6px;
   color: #eeeeee;
 }
+
+/* ======= HUD: Live pill + QR card ======= */
+#hud {
+  /* place centered at top of the page so it sits above the "Now Playing" heading */
+  position: fixed;
+  top: 88px; /* adjust if you want it closer/further from the heading */
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* Live pill */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border: 1px solid rgba(255,255,255,.15);
+  background: rgba(15,25,35,.55);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  backdrop-filter: blur(8px) saturate(120%);
+  color: #cbd5e1;
+  text-transform: uppercase;
+  box-shadow: 0 6px 24px rgba(0,0,0,.35);
+}
+.live-pill .dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #ff6b6b;
+  box-shadow: 0 0 12px #ff6b6b;
+  animation: blink 1.2s infinite;
+}
+.live-pill.on { color: #eafffb; border-color: rgba(0,255,200,.25); }
+.live-pill.on .dot {
+  background: #00ffb3;
+  box-shadow: 0 0 14px #00ffb3, 0 0 30px rgba(0,255,179,.6);
+}
+
+/* QR card */
+.qr-card {
+  width: 200px;
+  padding: 12px 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(10, 15, 22, .55);
+  -webkit-backdrop-filter: blur(8px) saturate(120%);
+  backdrop-filter: blur(8px) saturate(120%);
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+  text-align: center;
+}
+.qr-title {
+  font-size: 0.9rem;
+  color: #9ae7ff;
+  margin-bottom: 8px;
+  letter-spacing: .02em;
+}
+.qrcode {
+  width: 160px; height: 160px;
+  margin: 0 auto 8px;
+  display: grid; place-items: center;
+}
+.qr-caption {
+  font-size: 0.8rem;
+  color: #e7fdff;
+  word-break: break-all;
+  opacity: 0.9;
+}
+.qr-fallback { font-size: .8rem; color: #ffd9d9; }
+
+/* Glow + animation bits */
+.glass { background: rgba(15, 25, 35, .55); -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%); }
+
+/* Performance hint: promote transforms to compositor during animation */
+.live-pill { will-change: transform; }
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .35; }
+}
+
+/* Responsive tweaks */
+@media (max-width: 780px) {
+  #hud { position: static; justify-content: center; margin: 12px 0 0; }
+}
+
+/* === QR Code Bottom Right === */
+#qr-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0,0,0,0.55);
+  padding: 12px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(0,255,255,0.6);
+  z-index: 9999;
+}
+
+/* Updated id here */
+#qrcode-br {
+  width: 140px;
+  height: 140px;
+  margin: 0 auto 6px;
+}
+
+#qr-caption {
+  font-size: 0.8rem;
+  color: #00f0ff;
+  word-break: break-all;
+}
+

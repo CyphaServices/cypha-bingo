@@ -5,8 +5,23 @@
   <title>🎯 Cypha Bingo - Big Screen</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="/css/bigscreen.css" />
+  <!-- Lightweight QR generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 </head>
 <body>
+  <!-- HUD: Live pill only (removed QR card here) -->
+  <div id="hud">
+    <div class="live-pill" id="live-pill">
+      <span class="dot"></span><span class="label">STANDBY</span>
+    </div>
+  </div>
+
+  <!-- Bottom-right QR only -->
+  <div id="qr-container">
+    <div id="qrcode-br"></div>
+    <div id="qr-caption">bingo.cyphaent.com</div>
+  </div>
+
   <div id="bigscreen-wrapper">
     <h1 id="bingo-title">🎶 Now Playing</h1>
     <div id="current-song">Waiting for host...</div>
@@ -16,42 +31,76 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <!-- Single QRCode library include (moved here, once) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <script>
     const socket = io();
+
+    // DOM refs
     const currentSongEl = document.getElementById('current-song');
     const recentSongsEl = document.getElementById('recent-songs');
+    const livePill      = document.getElementById('live-pill');
+    const qrCaptionEl   = document.getElementById('qr-caption');
 
+    // Join URL (edit if you want a different path)
+    const JOIN_URL = "https://bingo.cyphaent.com";
+
+    // Build the bottom-right QR once
+    window.addEventListener("load", () => {
+      qrCaptionEl.textContent = JOIN_URL;
+      try {
+        // eslint-disable-next-line no-undef
+        new QRCode(document.getElementById("qrcode-br"), {
+          text: JOIN_URL,
+          width: 140,
+          height: 140,
+          colorDark: "#00f0ff",
+          colorLight: "transparent",
+          correctLevel: QRCode.CorrectLevel.H
+        });
+      } catch (e) {
+        document.getElementById("qrcode-br").innerHTML =
+          '<div class="qr-fallback">Scan disabled — visit:<br>'+JOIN_URL+'</div>';
+      }
+    });
+
+    // Live pill state
+    function setLive(isLive) {
+      livePill.classList.toggle('on', !!isLive);
+      livePill.querySelector('.label').textContent = isLive ? 'LIVE NOW' : 'STANDBY';
+    }
+    setLive(false);
+
+    // Recently called logic
     const maxRecent = 5;
     const recentSongs = [];
     let lastSong = null;
 
-    // Listen for a new song broadcast from host
     socket.on('broadcastSong', (songTitle) => {
-      // Add the last song to the recent list if it exists and is different
       if (lastSong && lastSong !== songTitle) {
         if (recentSongs.length >= maxRecent) recentSongs.shift();
         recentSongs.push(lastSong);
       }
-
-      // Update Now Playing
       lastSong = songTitle;
       currentSongEl.textContent = songTitle;
 
-      // Refresh recent songs display
       recentSongsEl.innerHTML = '';
       recentSongs.slice().reverse().forEach(song => {
         const li = document.createElement('li');
         li.textContent = song;
         recentSongsEl.appendChild(li);
       });
+
+      setLive(true);
     });
 
-    // Clear bigscreen display when host triggers clear
     socket.on('clear-bigscreen', () => {
       recentSongs.length = 0;
       recentSongsEl.innerHTML = '';
       currentSongEl.textContent = 'Waiting for host...';
       lastSong = null;
+      setLive(false);
     });
   </script>
 </body>
