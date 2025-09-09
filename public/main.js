@@ -138,9 +138,10 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function buildTile(name) {
+  function buildTile(name, idx) {
     const tile = document.createElement("div");
     tile.className = "bingo-tile";
+    if (typeof idx !== 'undefined') tile.dataset.index = String(idx);
   // If the incoming name is in the format "Song - Artist", show only the
   // Song part on the tile to save space, but keep the full string as a
   // tooltip so users can see the artist on hover.
@@ -157,6 +158,8 @@ window.addEventListener("DOMContentLoaded", () => {
     tile.addEventListener("click", () => {
       if (!tile.classList.contains("free")) {
         tile.classList.toggle("selected");
+        // save selection state for this card
+        try { saveSelectionsForContainer(tile.closest('.bingo-card')); } catch (e) {}
       }
     });
 
@@ -168,14 +171,78 @@ window.addEventListener("DOMContentLoaded", () => {
     tiles.forEach(tile => container.appendChild(tile));
   }
 
+  // Helpers: persist selections per-player + per-card signature
+  function cardSignatureFromArray(arr) {
+    // conservative signature: join tile texts with | so order matters
+    return arr.map(s => String(s)).join('|');
+  }
+
+  function storagePrefix() {
+    const name = currentPlayerName || savedName || 'anonymous';
+    return `cypha:selections:${name}:`;
+  }
+
+  function saveSelectionsForContainer(container) {
+    if (!container) return;
+    const tiles = Array.from(container.querySelectorAll('.bingo-tile'));
+    // try to recover the card's text content signature
+    const texts = tiles.map(t => t.title || t.textContent || '');
+    const sig = cardSignatureFromArray(texts);
+    const selectedIndices = tiles.map((t, i) => t.classList.contains('selected') ? i : -1).filter(i => i >= 0);
+    try {
+      if (selectedIndices.length) {
+        localStorage.setItem(storagePrefix() + sig, JSON.stringify(selectedIndices));
+      } else {
+        // remove empty selection set
+        localStorage.removeItem(storagePrefix() + sig);
+      }
+    } catch (e) { console.warn('⚠️ Could not save selections', e.message); }
+  }
+
+  function restoreSelectionsForContainer(container, tilesArr) {
+    if (!container) return;
+    const tiles = Array.from(container.querySelectorAll('.bingo-tile'));
+    const sig = cardSignatureFromArray(tilesArr || tiles.map(t => t.title || t.textContent || ''));
+    try {
+      const raw = localStorage.getItem(storagePrefix() + sig);
+      if (!raw) return;
+      const indices = JSON.parse(raw);
+      indices.forEach(i => {
+        const t = tiles[i];
+        if (t && !t.classList.contains('free')) t.classList.add('selected');
+      });
+    } catch (e) { console.warn('⚠️ Could not restore selections', e.message); }
+  }
+
+  function clearSelectionsForPlayer() {
+    try {
+      const prefix = storagePrefix();
+      const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
+      keys.forEach(k => localStorage.removeItem(k));
+      // also clear UI selections
+      document.querySelectorAll('.bingo-tile.selected').forEach(t => {
+        if (!t.classList.contains('free')) t.classList.remove('selected');
+      });
+    } catch (e) { console.warn('⚠️ Could not clear selections', e.message); }
+  }
+
   socket.on("generateCard", data => {
     console.log("🎲 Received card data:", data);
-    const tiles1 = data.card1.map(buildTile);
-    const tiles2 = data.card2.map(buildTile);
+    // build tiles with indices so we can persist by position
+    const tiles1 = data.card1.map((name, idx) => buildTile(name, idx));
+    const tiles2 = data.card2.map((name, idx) => buildTile(name, idx));
     renderCard(card1, tiles1);
     renderCard(card2, tiles2);
     card2.style.display = usingTwoCards ? "grid" : "none";
+    // restore previous selections if any (based on card contents signature)
+    try { restoreSelectionsForContainer(card1, data.card1); } catch (e) {}
+    try { restoreSelectionsForContainer(card2, data.card2); } catch (e) {}
   });
+
+  // Clear selections when host resets / starts a new game
+  socket.on('clear-bigscreen', () => { clearSelectionsForPlayer(); });
+  socket.on('new-game', () => { clearSelectionsForPlayer(); });
+  socket.on('start-game', () => { clearSelectionsForPlayer(); });
 
   socket.on('join-accepted', (name) => {
     console.log('✅ Join accepted for', name);
