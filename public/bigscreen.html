@@ -9,11 +9,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 </head>
 <body>
+
   <!-- HUD: Live pill only (removed QR card here) -->
   <div id="hud">
     <div class="live-pill" id="live-pill">
       <span class="dot"></span><span class="label">STANDBY</span>
     </div>
+    <!-- Announcement Bar (Ticker) DIRECTLY BELOW LIVE PILL -->
+    <div id="announcement-bar" class="announcement-bar"><span id="announcement-text">Welcome to Cypha Bingo!</span></div>
   </div>
 
   <!-- Bottom-right QR only -->
@@ -35,6 +38,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
   <script>
+
     const socket = io();
 
     // DOM refs
@@ -42,6 +46,13 @@
     const recentSongsEl = document.getElementById('recent-songs');
     const livePill      = document.getElementById('live-pill');
     const qrCaptionEl   = document.getElementById('qr-caption');
+    const announcementText = document.getElementById('announcement-text');
+
+    // Listen for announcement updates from host
+    socket.on('announcement', txt => {
+      if (announcementText) announcementText.textContent = (txt ?? '');
+    });
+
 
     // Join URL (edit if you want a different path)
     const JOIN_URL = "https://bingo.cyphaent.com";
@@ -53,11 +64,11 @@
         // eslint-disable-next-line no-undef
         new QRCode(document.getElementById("qrcode-br"), {
           text: JOIN_URL,
-          width: 140,
-          height: 140,
-          colorDark: "#00f0ff",
-          colorLight: "transparent",
-          correctLevel: QRCode.CorrectLevel.H
+          width: 196,
+          height: 196,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
         });
       } catch (e) {
         document.getElementById("qrcode-br").innerHTML =

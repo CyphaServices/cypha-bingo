@@ -1,3 +1,77 @@
+/* === HUD: Live pill (top) + Announcement bar (below) === */
+#hud {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;      /* stack vertically */
+  align-items: center;
+  gap: 12px;                   /* space between pill and ticker */
+  width: min(1200px, 95vw);    /* keep things centered and responsive */
+  z-index: 9999;
+}
+
+/* Make the ticker fill the HUD width and let the gap control spacing */
+#hud .announcement-bar {
+  width: 100%;
+  margin-top: 0;               /* override earlier margin-top */
+}
+
+/* Give the page content a little more headroom under the fixed HUD */
+#bingo-title {                 /* was 120px */
+  margin-top: 180px;
+}
+
+@media (max-width: 780px) {
+  #bingo-title { margin-top: 150px; }
+}
+/* ===============================
+   ANNOUNCEMENT BAR (TICKER)
+=============================== */
+#announcement-bar-wrapper {
+  margin-bottom: 18px;
+}
+.announcement-bar {
+  width: 100%;
+  background: linear-gradient(90deg, #00f0ff 60%, #0fffd7 100%);
+  color: #222;
+  font-size: 2.6em;
+  font-weight: 700;
+  border-radius: 8px;
+  padding: 10px 24px;
+  overflow: hidden;
+  white-space: nowrap;
+  box-shadow: 0 2px 16px #00f0ff44;
+  position: relative;
+  text-align: left;
+  display: block;
+  margin-top: 18px;
+}
+
+/* Scrolling text inside announcement bar */
+#announcement-text {
+  display: inline-block;
+  min-width: 100%;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ticker-scroll 25s linear infinite;
+}
+
+@keyframes ticker-scroll {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+#announcement-input {
+  flex: 1;
+  padding: 6px 12px;
+  font-size: 1.1em;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+#announcement-set-btn {
+  margin-left: 8px;
+}
 /* =========================================
    GENERAL PAGE STYLES
    ========================================= */
@@ -15,24 +89,30 @@ body {
    HEADER: "NOW PLAYING"
    ========================================= */
 #bingo-title {
-  font-size: 3.5em;
-  margin-bottom: 40px;
+  font-size: 2.6em;
+  margin-bottom: 24px;
   color: #00f0ff;
   text-shadow: 2px 2px #000;
+  text-align: left;
+  margin-left: 60px;
+  margin-top: 120px;
 }
 
 /* =========================================
    CURRENT SONG DISPLAY
    ========================================= */
 #current-song {
-  font-size: 3em;
+  font-size: 2.1em;
   font-weight: bold;
   background: #00f0ff;
   color: #000;
-  padding: 30px;
-  margin-bottom: 40px;
+  padding: 24px;
+  margin-bottom: 32px;
   border-radius: 20px;
   box-shadow: 0 0 25px #00f0ff;
+  text-align: left;
+  margin-left: 60px;
+  max-width: 900px;
 }
 
 /* =========================================
@@ -40,18 +120,23 @@ body {
    ========================================= */
 #recent-songs-title {
   font-size: 3em;
-  margin-top: 20px;
+  margin-top: 16px;
   color: #cccccc;
+  text-align: left;
+  margin-left: 60px;
 }
 
 /* =========================================
    RECENTLY CALLED SONGS LIST
    ========================================= */
 #recent-songs {
-  list-style: none;
-  padding: 0;
+  list-style: disc inside;
+  padding-left: 20px;
   font-size: 3em;
   margin-top: 10px;
+  text-align: left;
+  margin-left: 60px;
+  max-width: 900px;
 }
 
 #recent-songs li {
@@ -60,17 +145,20 @@ body {
 }
 
 /* ======= HUD: Live pill + QR card ======= */
+
 #hud {
-  /* place centered at top of the page so it sits above the "Now Playing" heading */
   position: fixed;
-  top: 88px; /* adjust if you want it closer/further from the heading */
+  top: 24px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   gap: 16px;
   align-items: center;
   z-index: 9999;
+  margin-bottom: 32px;
 }
+
+
 
 /* Live pill */
 .live-pill {
@@ -115,7 +203,7 @@ body {
 }
 .qr-title {
   font-size: 0.9rem;
-  color: #9ae7ff;
+  color: #f4f7f8;
   margin-bottom: 8px;
   letter-spacing: .02em;
 }
@@ -162,9 +250,22 @@ body {
 
 /* Updated id here */
 #qrcode-br {
-  width: 140px;
-  height: 140px;
-  margin: 0 auto 6px;
+  background: #ffffff;            /* <-- white background for scan reliability */
+  padding: 12px;                  /* quiet zone around the code */
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 8px;
+}
+
+/* Make the QR canvas fit neatly inside the white well */
+#qrcode-br canvas {
+  width: 196px !important;        /* 196 + 12*2 padding = 220 total visual size */
+  height: 196px !important;
+  display: block;
+  background: transparent;
+  image-rendering: pixelated;
+  /* REMOVE any invert/grayscale filters here */
 }
 
 #qr-caption {

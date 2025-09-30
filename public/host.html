@@ -22,6 +22,14 @@
 
     <!-- MIDDLE COLUMN: Game Controls -->
     <div class="column center-column">
+      <!-- Announcement Ticker -->
+      <div id="announcement-bar-wrapper" style="margin-bottom:18px;">
+        <div id="announcement-bar" class="announcement-bar">Welcome to Cypha Bingo!</div>
+        <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+          <input id="announcement-input" type="text" placeholder="Announce next game or prize..." style="flex:1; padding:6px 12px; font-size:1.1em; border-radius:6px; border:1px solid #ccc;">
+          <button id="announcement-set-btn" class="host-btn">Set Announcement</button>
+        </div>
+      </div>
   <!-- THEME SELECTION + START BUTTON -->
   <label for="theme-select">Theme</label>
   <select id="theme-select" class="theme-btn" aria-label="Theme selection"></select>
@@ -1252,6 +1260,17 @@ socket.on('bingo-alert', msg => {
     alertBox.textContent = '';
   });
 });
+    // Announcement bar logic
+    const announcementBar = document.getElementById('announcement-bar');
+    const announcementInput = document.getElementById('announcement-input');
+    const announcementSetBtn = document.getElementById('announcement-set-btn');
+    if (announcementSetBtn && announcementInput && announcementBar) {
+      announcementSetBtn.addEventListener('click', () => {
+        const txt = announcementInput.value.trim();
+        announcementBar.textContent = txt;     // update host UI
+        socket.emit('announcement', txt);      // emit even if txt === ''
+      });
+    }
   </script>
 </body>
 </html>
