@@ -49,6 +49,11 @@ const PORT = process.env.PORT || 3000;
 // Example: http://localhost:3000/host.html or /bigscreen.html
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve client.html at the root URL
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'client.html'));
+});
+
 // Optional health check for uptime monitors
 app.get('/health', (_req, res) => res.send('ok'));
 
