@@ -199,18 +199,18 @@ io.on('connection', (socket) => {
   });
 
   // host starts a game with a theme { name, songs }
-  socket.on('startgame', (theme) => {
+  const startGame = (theme) => {
     // create a new game id (timestamp-based) so stored cards are namespaced
     currentGameId = `game_${Date.now()}`;
     currentTheme = theme?.name || '';
     callList = shuffle([...(theme?.songs || [])]);
     currentCallIndex = -1;
 
-  // (deprecated) 'theme' event removed; clients should use 'game-info'
+    // (deprecated) 'theme' event removed; clients should use 'game-info'
     io.emit('call-update', []); // reset calls on clients
 
-  // broadcast game info for clients (useful for debugging / display)
-  io.emit('game-info', { gameId: currentGameId, theme: currentTheme });
+    // broadcast game info for clients (useful for debugging / display)
+    io.emit('game-info', { gameId: currentGameId, theme: currentTheme });
 
     // clear previous games' stored cards to free memory
     for (const gid in playerCardsByGame) {
@@ -232,14 +232,18 @@ io.on('connection', (socket) => {
       // rejoining with the same name resumes the current game's cards
       const playerName = activePlayers.get(id);
       if (playerName) {
-    playerCardsByGame[currentGameId][playerName] = { card1, card2 };
+        playerCardsByGame[currentGameId][playerName] = { card1, card2 };
       }
 
       clientSocket.emit('generateCard', { card1, card2 });
     }
-  // persist new game state
-  saveDb();
-  });
+    // persist new game state
+    saveDb();
+  };
+
+  // Support both legacy and new event names
+  socket.on('startgame', startGame);
+  socket.on('start-game', startGame);
 
   // host advances to next call
   socket.on('next-call', () => {
