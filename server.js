@@ -1,96 +1,42 @@
-/**
- * server.js — Cypha Bingo Socket/HTTP server
- * ------------------------------------------
- * What this does:
- *  - Serves the static front-end (host.html, bigscreen.html, client assets)
- *  - Manages live game state (theme, calls, player list, bingo claims)
- *  - Broadcasts updates over Socket.IO to all connected screens
- *  - Persists minimal state (player cards per game) with lowdb
- *
- * Key events (Socket.IO):
- *  - announcement            : set/clear the scrolling ticker on all screens
- *  - clear-songs             : tell bigscreen to clear the called list
- *  - join-game               : player joins; resolves name; returns cards if game active
- *  - pattern-change          : host sets bingo pattern (e.g., lines, corners)
- *  - previewSong             : host previews next song (echoed back to host)
- *  - confirmSong             : host confirms/broadcasts a song to everyone
- *  - startgame/start-game    : host starts a new game with { name, songs[] }
- *  - next-call               : advance to next call from the shuffled list
- *  - bingo-claim             : player shouts BINGO; broadcast an alert
- *
- * Notes:
- *  - There must be EXACTLY ONE "const io = ..." line. Do not redeclare `io`.
- *  - Sending an empty string for `announcement` will CLEAR the ticker on bigscreen.
- */
-
-const path = require('path');
-const http = require('http');
+// server.js
 const express = require('express');
+const http = require('http');
 const socketio = require('socket.io');
-
-// --- Lightweight JSON persistence (cards per game, current game id) ---
+const path = require('path');
+// persistence
 const { Low } = require('lowdb');
 const { JSONFile } = require('lowdb/node');
 
 const app = express();
 const server = http.createServer(app);
-
-// IMPORTANT: single io declaration (do not duplicate this)
 const io = socketio(server);
 
-// Use env PORT if provided (Azure/Heroku/etc.), default to 3000 for local dev
+// Azure/Heroku-style port
 const PORT = process.env.PORT || 3000;
 
-/* ------------------------------------------------------------------ */
-/* Static file hosting                                                 */
-/* ------------------------------------------------------------------ */
-
-// Serve everything in /public at the site root.
-// Example: http://localhost:3000/host.html or /bigscreen.html
+// ---------- Static hosting ----------
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
-// Serve client.html at the root URL
+// Always serve the client HTML at root
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'client.html'));
 });
 
-// Optional health check for uptime monitors
+// Health check
 app.get('/health', (_req, res) => res.send('ok'));
 
-/* ------------------------------------------------------------------ */
-/* In-memory game state (resets when server restarts)                  */
-/* ------------------------------------------------------------------ */
-
-// Current theme name (string shown in UIs)
+// ---------- Game state ----------
 let currentTheme = '';
-
-// The full shuffled list of songs for the CURRENT game
 let callList = [];
-
-// Index pointer to the most recent call in callList (-1 means no calls yet)
 let currentCallIndex = -1;
-
-// Unique id for the current game (used to namespace persisted cards)
 let currentGameId = null;
+let calledHistory = []; // chronological list of confirmed calls
 
-// Historical list of CONFIRMED calls (for convenience on reconnects)
-let calledHistory = [];
-
-// Map of gameId -> { playerName -> { card1:[], card2:[] } }
-// Used to give a player the SAME cards if they refresh/rejoin the current game
+// playerCardsByGame maps gameId => { playerName => { card1, card2 } }
 let playerCardsByGame = {};
+const activePlayers = new Map();   // socket.id => playerName
 
-// Map socket.id -> playerName (tracks lobby/connected users)
-const activePlayers = new Map();
-
-// Last announcement text (used to initialize late joiners / refreshes)
-let lastAnnouncement = '';
-
-/* ------------------------------------------------------------------ */
-/* Utilities                                                           */
-/* ------------------------------------------------------------------ */
-
-// Fisher–Yates shuffle (pure; returns a NEW array)
 function shuffle(array) {
   const a = [...array];
   for (let i = a.length - 1; i > 0; i--) {
@@ -100,34 +46,27 @@ function shuffle(array) {
   return a;
 }
 
-// Broadcast the current lobby player list to everyone
 function updateLobby() {
   const names = Array.from(activePlayers.values());
   io.emit('player-list', names);
 }
 
-/* ------------------------------------------------------------------ */
-/* lowdb setup (very small JSON DB for persistence across restarts)    */
-/* ------------------------------------------------------------------ */
-
+// --- lowdb setup (simple file persistence) ---
 const dbFile = path.join(__dirname, 'data', 'bingo-db.json');
 const adapter = new JSONFile(dbFile);
 const db = new Low(adapter);
 
 async function loadDb() {
   try {
-    const fs = require('fs');
-    const dataDir = path.dirname(dbFile);
-    if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-
+  // ensure data directory exists
+  const fs = require('fs');
+  const dataDir = path.dirname(dbFile);
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
     await db.read();
     db.data = db.data || { currentGameId: null, playerCardsByGame: {} };
-
-    // Initialize from saved data
     currentGameId = db.data.currentGameId || null;
     playerCardsByGame = db.data.playerCardsByGame || {};
-
-    console.log('🔁 DB loaded. Known games:', Object.keys(playerCardsByGame).length);
+    console.log('🔁 Loaded DB:', Object.keys(playerCardsByGame).length, 'games');
   } catch (err) {
     console.warn('⚠️ Could not read DB:', err.message);
     db.data = { currentGameId: null, playerCardsByGame: {} };
@@ -136,49 +75,37 @@ async function loadDb() {
 
 async function saveDb() {
   try {
-    db.data = db.data || {};
-    db.data.currentGameId = currentGameId;
-    db.data.playerCardsByGame = playerCardsByGame;
-    await db.write();
+  db.data = db.data || {};
+  db.data.currentGameId = currentGameId;
+  db.data.playerCardsByGame = playerCardsByGame;
+  await db.write();
   } catch (err) {
     console.warn('⚠️ Could not write DB:', err.message);
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Socket.IO handlers                                                  */
-/* ------------------------------------------------------------------ */
-
+// ---------- Socket handlers ----------
 io.on('connection', (socket) => {
-  console.log(`👋 Client connected: ${socket.id}`);
+  console.log(`Client connected: ${socket.id}`);
 
-  // Let everyone know how many are connected (rough pulse)
+  // broadcast player count on connect
   io.emit('player-count', io.engine.clientsCount);
 
-  // Send initial state to JUST the new client so refreshes don’t look empty
+  // send current state to the newly connected socket so hosts/bigscreen
+  // that simply reload do not appear empty. This includes game metadata,
+  // call history up to the current index, and the lobby player list.
   socket.emit('game-info', { gameId: currentGameId, theme: currentTheme });
-  socket.emit('call-update', calledHistory.slice()); // last known confirmed calls
+  socket.emit('call-update', calledHistory.slice());
   socket.emit('player-list', Array.from(activePlayers.values()));
-  socket.emit('announcement', lastAnnouncement);      // show current ticker immediately
 
-  /* ---------------------- Announcement (ticker) -------------------- */
-  // Host emits: socket.emit('announcement', 'Tonight: 2-for-1 wings!');
-  // NOTE: An empty string '' is a valid payload to CLEAR the ticker.
-  socket.on('announcement', (txt) => {
-    lastAnnouncement = typeof txt === 'string' ? txt : '';
-    io.emit('announcement', lastAnnouncement); // broadcast to all screens
-  });
-
-  /* ----------------------- Bigscreen controls ---------------------- */
-  // Host wants to clear the visible list on the big screen
+  // clear songs for everyone (big screen listens for this)
   socket.on('clear-songs', () => {
     io.emit('clear-bigscreen');
   });
 
-  /* --------------------------- Lobby join -------------------------- */
-  // Payload can be a string name or an object { name, resume }
+  // player joins game (accepts string name or object { name, resume })
   socket.on('join-game', (payload) => {
-    // Normalize payload
+    // extract name and resume flag from either a string or object payload
     let name = '';
     let resume = false;
     if (typeof payload === 'string') {
@@ -193,23 +120,26 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // If resuming, reclaim the same name from an older socket
+    // If resuming, reclaim the name from any previous socket mapping so this
+    // socket becomes the authoritative session for that player.
     if (resume) {
       const prev = Array.from(activePlayers.entries()).find(([, pname]) => pname === name);
       if (prev) {
         const [prevSid] = prev;
         if (prevSid !== socket.id) {
-          console.log(`🔁 Reclaiming '${name}' from ${prevSid}`);
+          console.log(`🔁 Reclaiming name '${name}' from previous socket ${prevSid}`);
           activePlayers.delete(prevSid);
         }
       }
     }
 
-    // Enforce unique visible names among currently connected players (unless resuming)
+    // enforce unique player names among currently connected sockets unless
+    // the client is explicitly resuming
     let finalName = name;
     if (!resume) {
-      const taken = Array.from(activePlayers.values()).includes(finalName);
-      if (taken) {
+      const nameTaken = Array.from(activePlayers.entries()).some(([sid, pname]) => pname === finalName && sid !== socket.id);
+      if (nameTaken) {
+        // automatic disambiguation: append #n
         let suffix = 2;
         while (Array.from(activePlayers.values()).includes(`${name}#${suffix}`)) suffix++;
         finalName = `${name}#${suffix}`;
@@ -217,102 +147,101 @@ io.on('connection', (socket) => {
       }
     }
 
-    // Register and broadcast lobby list
-    activePlayers.set(socket.id, finalName);
+  // register player using resolved name (may have been disambiguated or reclaimed)
+  console.log(`➡️ join-game payload:`, payload, `-> resolved: ${finalName} (resume: ${resume})`);
+  activePlayers.set(socket.id, finalName);
     updateLobby();
 
-    // Bring the player up to speed on calls so far (for current game)
+  // send current theme + calls so newcomers catch up
+  // (deprecated) 'theme' event removed in favor of the structured 'game-info' event
     socket.emit('call-update', callList.slice(0, currentCallIndex + 1));
 
-    // Let the client confirm the resolved name and current game info
-    socket.emit('join-accepted', finalName);
-    socket.emit('game-info', { gameId: currentGameId, theme: currentTheme });
+  // Accept join so client can show UI (return the resolved name)
+  socket.emit('join-accepted', finalName);
+  // Send current game info to the joining socket so late-joiners / refreshes
+  // immediately receive the active theme and game id.
+  socket.emit('game-info', { gameId: currentGameId, theme: currentTheme });
 
-    // If there is an active game, give this player their cards (and persist them)
+    // if a theme is active, provide cards for the current game (namespace by gameId)
     if (currentGameId && currentTheme && callList.length > 0) {
       playerCardsByGame[currentGameId] = playerCardsByGame[currentGameId] || {};
       const cardsForGame = playerCardsByGame[currentGameId];
 
       if (cardsForGame[finalName]) {
-        // Already had cards for this game (e.g., refresh)
         socket.emit('generateCard', cardsForGame[finalName]);
       } else {
-        // Create new cards (25 unique items per card from the theme’s songs)
         const card1 = shuffle([...callList]).slice(0, 25);
         const card2 = shuffle([...callList]).slice(0, 25);
         cardsForGame[finalName] = { card1, card2 };
         socket.emit('generateCard', { card1, card2 });
+        // persist new assignment
         saveDb();
       }
     }
   });
 
-  /* ---------------------- Pattern + song flow ---------------------- */
-
-  // Host selects a different win pattern (all UIs update)
+  // host changes the bingo pattern
   socket.on('pattern-change', (pattern) => {
     io.emit('bingo-pattern', pattern);
   });
 
-  // Host previews a song (only echo back to the host who requested it)
+  // host previews a song (echo back to host)
   socket.on('previewSong', (songTitle) => {
     socket.emit('previewSong', songTitle);
   });
 
-  // Host confirms/broadcasts a song to EVERYONE
+  // host confirms/broadcasts a song to all screens
   socket.on('confirmSong', (songTitle) => {
-    calledHistory.push(songTitle);        // track confirmed song for reconnects
-    io.emit('broadcastSong', songTitle);  // legacy event some screens may use
-    io.emit('new-call', songTitle);       // primary event
+  // persist the confirmed call in server history and broadcast
+  calledHistory.push(songTitle);
+  io.emit('broadcastSong', songTitle);
+  io.emit('new-call', songTitle);
   });
 
-  /* --------------------------- Start game -------------------------- */
-
-  // Accept both legacy ('startgame') and current ('start-game') event names
-  function handleStartGame(theme) {
-    // theme shape: { name: '80s', songs: ['Song A', 'Song B', ...] }
-    currentGameId = `game_${Date.now()}`;        // unique id for namespacing cards
+  // host starts a game with a theme { name, songs }
+  socket.on('startgame', (theme) => {
+    // create a new game id (timestamp-based) so stored cards are namespaced
+    currentGameId = `game_${Date.now()}`;
     currentTheme = theme?.name || '';
     callList = shuffle([...(theme?.songs || [])]);
     currentCallIndex = -1;
-    calledHistory = [];                           // fresh confirmed-call history
 
-    // Reset calls on clients and broadcast current game meta
-    io.emit('call-update', []);
-    io.emit('game-info', { gameId: currentGameId, theme: currentTheme });
+  // (deprecated) 'theme' event removed; clients should use 'game-info'
+    io.emit('call-update', []); // reset calls on clients
 
-    // Drop all previous games’ cards (keeps memory small)
+  // broadcast game info for clients (useful for debugging / display)
+  io.emit('game-info', { gameId: currentGameId, theme: currentTheme });
+
+    // clear previous games' stored cards to free memory
     for (const gid in playerCardsByGame) {
       if (Object.prototype.hasOwnProperty.call(playerCardsByGame, gid)) {
         delete playerCardsByGame[gid];
       }
     }
+
     playerCardsByGame[currentGameId] = {};
 
-    // Give each currently connected socket two new cards for THIS game
+    // give each connected client a pair of cards and store them for resume
     for (const [id, clientSocket] of io.sockets.sockets) {
       const shuffled1 = shuffle([...(theme?.songs || [])]);
       const shuffled2 = shuffle([...(theme?.songs || [])]);
       const card1 = shuffled1.slice(0, 25);
       const card2 = shuffled2.slice(0, 25);
 
-      // If we know the player's name, save their cards under that name
+      // if we know the player's name (they joined lobby), save their cards so
+      // rejoining with the same name resumes the current game's cards
       const playerName = activePlayers.get(id);
       if (playerName) {
-        playerCardsByGame[currentGameId][playerName] = { card1, card2 };
+    playerCardsByGame[currentGameId][playerName] = { card1, card2 };
       }
 
       clientSocket.emit('generateCard', { card1, card2 });
     }
+  // persist new game state
+  saveDb();
+  });
 
-    saveDb();
-  }
-
-  socket.on('startgame', handleStartGame);
-  socket.on('start-game', handleStartGame);
-
-  /* ------------------------- Next call step ------------------------ */
-
+  // host advances to next call
   socket.on('next-call', () => {
     if (currentCallIndex + 1 < callList.length) {
       currentCallIndex++;
@@ -320,29 +249,24 @@ io.on('connection', (socket) => {
     }
   });
 
-  /* --------------------------- Bingo claim ------------------------- */
-
+  // player claims bingo
   socket.on('bingo-claim', (name) => {
     io.emit('bingo-alert', `${name} says BINGO!`);
   });
 
-  /* -------------------------- Disconnects ------------------------- */
-
+  // disconnect cleanup
   socket.on('disconnect', () => {
     activePlayers.delete(socket.id);
     updateLobby();
     io.emit('player-count', io.engine.clientsCount);
-    console.log(`👋 Client disconnected: ${socket.id}`);
+    console.log(`Client disconnected: ${socket.id}`);
   });
 });
 
-/* ------------------------------------------------------------------ */
-/* Boot the server (after DB is loaded)                                */
-/* ------------------------------------------------------------------ */
-
+// ---------- Start server (ensure DB is loaded first) ----------
 (async () => {
   await loadDb();
   server.listen(PORT, () => {
-    console.log(`✅ Bingo server listening on http://localhost:${PORT}`);
+    console.log(`✅ Bingo server listening on :${PORT}`);
   });
 })();

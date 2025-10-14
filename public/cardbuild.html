@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Card Builder - Cypha Bingo</title>
+  <link rel="stylesheet" href="css/fonts.css" />
+  <link rel="stylesheet" href="css/enhanced-client.css" />
+  <style>
+    body { max-width: 700px; margin: 2em auto; font-family: Montserrat, Arial, sans-serif; }
+    .card-builder { background: #fff; border-radius: 10px; padding: 2em; box-shadow: 0 2px 8px #0002; }
+    .card-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 1em; }
+    .card-grid input { width: 100%; padding: 0.5em; text-align: center; border-radius: 4px; border: 1px solid #ccc; }
+    .actions { display: flex; gap: 1em; }
+    .theme-list { margin-top: 2em; }
+    .theme-list ul { padding-left: 1.2em; }
+  </style>
+</head>
+<body>
+  <div class="card-builder">
+    <h2>Build Your Custom Bingo Card</h2>
+    <form id="card-form">
+      <div class="card-grid" id="card-grid">
+        <!-- 5x5 grid of inputs will be generated here -->
+      </div>
+      <div class="actions">
+        <input type="text" id="theme-name" placeholder="Theme name (e.g. 90s Hip-Hop)" required />
+        <button type="submit">Save Card to Theme</button>
+      </div>
+    </form>
+    <div class="theme-list">
+      <h3>My Custom Themes</h3>
+      <ul id="theme-list"></ul>
+    </div>
+  </div>
+  <script src="cardbuild.js"></script>
+</body>
+</html>
