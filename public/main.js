@@ -257,6 +257,8 @@ window.addEventListener("DOMContentLoaded", () => {
   // update player display
   const pd = document.getElementById('player-display');
   if (pd) pd.textContent = `Player: ${currentPlayerName}`;
+  // Ask server for cards for the current game if one is active
+  socket.emit('request-cards', currentPlayerName);
   });
 
   socket.on('join-failed', (reason) => {
@@ -273,6 +275,10 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.on('game-info', info => {
     const themeEl = document.getElementById('theme-name');
     if (themeEl) themeEl.textContent = info.theme || 'No theme';
+    // If connected and we have a name, proactively request cards when a game is active
+    if (socket.connected && (currentPlayerName || savedName) && info?.gameId && info?.theme) {
+      socket.emit('request-cards', currentPlayerName || savedName);
+    }
   });
 
   // Some legacy flows send the current theme as a simple 'theme' string.
@@ -311,6 +317,8 @@ window.addEventListener("DOMContentLoaded", () => {
     if (currentPlayerName) {
       console.log('🔁 Re-joining as', currentPlayerName);
       socket.emit('join-game', { name: currentPlayerName, resume: true });
+      // Also request cards if a game is active (server will no-op if none)
+      socket.emit('request-cards', currentPlayerName);
     }
   });
 

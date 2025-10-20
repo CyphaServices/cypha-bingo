@@ -32,6 +32,7 @@ let callList = [];
 let currentCallIndex = -1;
 let currentGameId = null;
 let calledHistory = []; // chronological list of confirmed calls
+let currentAnnouncement = '';
 
 // playerCardsByGame maps gameId => { playerName => { card1, card2 } }
 let playerCardsByGame = {};
@@ -97,10 +98,18 @@ io.on('connection', (socket) => {
   socket.emit('game-info', { gameId: currentGameId, theme: currentTheme });
   socket.emit('call-update', calledHistory.slice());
   socket.emit('player-list', Array.from(activePlayers.values()));
+  // send current announcement so bigscreen reflects latest on refresh
+  socket.emit('announcement', currentAnnouncement);
 
   // clear songs for everyone (big screen listens for this)
   socket.on('clear-songs', () => {
     io.emit('clear-bigscreen');
+  });
+
+  // host sets/clears announcement ticker
+  socket.on('announcement', (txt) => {
+    currentAnnouncement = typeof txt === 'string' ? txt : '';
+    io.emit('announcement', currentAnnouncement);
   });
 
   // player joins game (accepts string name or object { name, resume })
@@ -190,6 +199,26 @@ io.on('connection', (socket) => {
     socket.emit('previewSong', songTitle);
   });
 
+  // late joiners can explicitly request cards for the current game
+  socket.on('request-cards', (maybeName) => {
+    if (!currentGameId || !currentTheme || callList.length === 0) return;
+    const name = (typeof maybeName === 'string' && maybeName.trim()) || activePlayers.get(socket.id);
+    if (!name) return;
+
+    playerCardsByGame[currentGameId] = playerCardsByGame[currentGameId] || {};
+    const cardsForGame = playerCardsByGame[currentGameId];
+
+    if (cardsForGame[name]) {
+      socket.emit('generateCard', cardsForGame[name]);
+    } else {
+      const card1 = shuffle([...callList]).slice(0, 25);
+      const card2 = shuffle([...callList]).slice(0, 25);
+      cardsForGame[name] = { card1, card2 };
+      socket.emit('generateCard', { card1, card2 });
+      saveDb();
+    }
+  });
+
   // host confirms/broadcasts a song to all screens
   socket.on('confirmSong', (songTitle) => {
   // persist the confirmed call in server history and broadcast
@@ -205,6 +234,7 @@ io.on('connection', (socket) => {
     currentTheme = theme?.name || '';
     callList = shuffle([...(theme?.songs || [])]);
     currentCallIndex = -1;
+    calledHistory = [];
 
     // (deprecated) 'theme' event removed; clients should use 'game-info'
     io.emit('call-update', []); // reset calls on clients
